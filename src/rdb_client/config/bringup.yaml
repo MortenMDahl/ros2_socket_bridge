@@ -1,0 +1,6 @@
+client_node:
+  ros__parameters:
+    server_ip: '127.0.0.1'
+    server_port: 3000
+    port_list_data: [3002, 3003]
+    port_list_commands: [3004, 3005]

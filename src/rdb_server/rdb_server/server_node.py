@@ -44,11 +44,13 @@ class ServerNode(Node):
     def __init__(self, robot_name, robot_type, server_port):
         super().__init__('server_node')
         self.robot_name = str(robot_name)
+        self.robot_type = str(robot_type)
+
         self.name = self.robot_name + '_server_node'
 
         self.server_port = int(server_port or 0)
 
-        # Get parameter from param.yaml
+        # Get parameter from bringup.yaml
         self.declare_parameter('server_ip')
         self.server_ip = str(self.get_parameter('server_ip').value)
 
@@ -85,7 +87,7 @@ class ServerNode(Node):
 
         while rclpy.ok(): 
             self.server, address = self.serverSocket.accept() # Waits incoming connection
-            print(str(self.name) + ': Data received from ' + address[0] + ':' + address[1])
+            print(self.name, ': Data received from ' ,address[0] , ':' , address[1])
 
             while msg == None:
                 msg = self.server.recv(2048)
@@ -95,19 +97,21 @@ class ServerNode(Node):
             msg = None
 
             # Handle the received message
-            server_msg_handler(data)
+            self.server_msg_handler(data)
 
 
     def server_msg_handler(self, data):
         if data[0] == 'init':
             self.server.send('Connected to server.'.encode('utf-8'))
             print('Received init message.')
-            if data[1] == robot_name:
-                if data[2] == robot_type:
+            if data[1] == self.robot_name:
+                if data[2] == self.robot_type:
 
                     # Confirm with the client that the settings match
                     confirm_init_msg = 'Matching init received.'.encode('utf-8')
-                    client.send(confirm_init_msg)
+                    self.server.send(confirm_init_msg)
+
+                    print(data)
 
                     # Establish port lists and convert contents to integers
                     self.port_list_data = data[3].split(';')

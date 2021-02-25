@@ -26,7 +26,7 @@ from rclpy.qos import qos_profile_sensor_data
 from rclpy.utilities import remove_ros_args
 import argparse
 from _thread import *
-import sockets
+import socket
 
 # from tcpSocket import TCPSocket
 #from udpSocket import UDPSocket
@@ -38,20 +38,31 @@ import sockets
 
 
 class ClientNode(Node):
-    def __init__(self, robot_name, robot_type, server_ip, server_port, port_list_data, port_list_commands):
+    def __init__(self, robot_name, robot_type):
         super().__init__('client_node')
+        self.robot_name = str(robot_name)
         self.name = robot_name + '_client_node'
-        #self.declare_parameter('port')
-        self.port_list_data = self.get_parameter('port_list_data').value
-        self.port_list_commands = self.get_parameter('port_list_commands').value
-        # For testing
-        self.server_port = 3000
 
+        # Get parameters from config file
+        self.declare_parameter('server_ip')
         self.server_ip = str(self.get_parameter('server_ip').value)
+        print('Server IP:', self.server_ip)
+
+        self.declare_parameter('server_port')
+        self.server_port = int(self.get_parameter('server_port').value or 0)
+        print('Server port:', self.server_port)
+
+        self.declare_parameter('port_list_data')
+        self.port_list_data = self.get_parameter('port_list_data').value
+        print("port_list_data: ", self.port_list_data)
+
+        self.declare_parameter('port_list_commands')
+        self.port_list_commands = self.get_parameter('port_list_commands').value
+        print("port_list_commands: ", self.port_list_commands)
 
 
-        self.port_list_data = []
-        self.port_list_commands = []
+        #self.port_list_data = []
+        #self.port_list_commands = []
         self.thread_objects = []
         self.connection_list_cmd = []
 
@@ -59,12 +70,12 @@ class ClientNode(Node):
 
         # Create initial message for setting up multiple sockets on the server
         init_msg = 'init:' + robot_name + ':' + robot_type + ':'
-        for i in range(len(port_list_data)):
-            init_msg.append(str(port_list_data[i]) + ';')
+        for i in range(len(self.port_list_data)):
+            init_msg += str(self.port_list_data[i]) + ';'
         init_msg = init_msg[:-1]
-        init_msg.append(':')
-        for j in range(len(port_list_commands)):
-            init_msg.append(str(port_list_commands) + ';')
+        init_msg+=':'
+        for j in range(len(self.port_list_commands)):
+            init_msg += str(self.port_list_commands) + ';'
         init_msg = init_msg[:-1]
 
         # Create socket object and connect to server
@@ -72,14 +83,14 @@ class ClientNode(Node):
         self.clientSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
         print('Connecting to server...')
         try:
-            clientSocket.connect((server_ip, server_port))
+            self.clientSocket.connect_ex((self.server_ip, self.server_port))
         except socket.error as e:
             print('Error: ' + str(e))
 
         # Send the init message and wait for response
-        clientSocket.send(init_msg.encode('utf-8'))
-        while connection_response = None:
-            connection_response = clientSocket.recv(2048)
+        self.clientSocket.send(init_msg.encode('utf-8'))
+        while connection_response == None:
+            connection_response = self.clientSocket.recv(2048)
             connection_response.decode('utf-8')
 
             if connection_response == 'Matching init received.':
@@ -128,3 +139,26 @@ class ClientNode(Node):
     def odom_callback(self):
         return -1
 
+def main(argv=sys.argv[1:]):
+    # Get parameters from launch file
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('-name', '--robot_name')
+    parser.add_argument('-type', '--robot_type')
+    args = parser.parse_args(remove_ros_args(args=argv))
+
+    # Initialize rclpy and create node object
+    rclpy.init(args=argv)
+    client_node = ClientNode(args.robot_name,args.robot_type)
+
+    # Spin the node
+    rclpy.spin(client_node)
+
+    try:
+        client_node.destroy_node()
+        rclpy.shutdown()
+    except:
+        print('Error: ' + "rclpy shutdown failed")
+
+
+if __name__ == '__main__':
+    main()

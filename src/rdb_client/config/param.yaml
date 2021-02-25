@@ -1,3 +1,0 @@
-client_node:
-  ros__parameters:
-    server_ip: '127.0.0.1'
