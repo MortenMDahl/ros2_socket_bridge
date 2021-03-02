@@ -1,6 +1,15 @@
 client_node:
   ros__parameters:
+
     server_ip: '127.0.0.1'
     server_port: 3000
-    port_list_data: [3002, 3003]
-    port_list_commands: [3004, 3005]
+
+    command_topics: ['initialpose', 'goal_pose']
+    command_msg_types: ['PoseWithCovarianceStamped', 'PoseStamped']
+    command_ports: [12002, 12003]
+    command_protocols: ['TCP', 'TCP']
+
+    data_topics: ['scan', 'odom']
+    data_msg_types: ['LaserScan', 'Odometry']
+    data_ports: [12004, 12005]
+    data_protocols: ['UDP', 'UDP']

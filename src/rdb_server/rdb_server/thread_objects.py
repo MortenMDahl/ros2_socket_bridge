@@ -15,8 +15,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-class ThreadObject:
-	def __init__(self, name, port, publisher):
+class BridgeObject:
+	def __init__(self, direction, name, msg_type, port, protocol):
+		self.direction = direction
 		self.name = name
+		self.msg_type = msg_type
 		self.port = port
 		self.publisher = publisher
+		self.protocol = protocol

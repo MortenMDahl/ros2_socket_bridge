@@ -31,56 +31,54 @@ class Sockets:
         self.connected = False
         self.name = socket_name
         self.ip = ip
-        self.port = port
-        self.sensor_socket = None
-        self.command_socket = None
+        self.port = int(port or 0)
 
 
     def sensor_socket(self):
-        print("Creating sensor socket: ", self.socket_name, ". IP: ", self.ip, ". Port: ", self.port, ".")
+        print("Creating sensor socket: " + str(self.name) + ". IP: " + str(self.ip) + ". Port: "+ str(self.port) + ".")
 
         try:
             self.sensor_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.sensor_socket.settimeout(0.1)
+            self.sensor_socket.settimeout(15)
             self.sensor_socket.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,1048576)
-            self.sensor_socket.bind((self.ip, self.port))
+
         except Exception as e:
-            print("Error binding ", self.socket_name, " to requested address: ", e)
+            print("Error binding ", self.name, " to requested address: ", e)
 
         return self.sensor_socket
 
     def command_socket(self):
-        print("Creating command socket: ", self.socket_name, ". IP: ", self.ip, ". Port: ", self.port, ".")
+        print("Creating command socket: " + str(self.name) + ". IP: " + str(self.ip) + ". Port: "+ str(self.port) + ".")
 
         try:
             self.command_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.command_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
-            self.command_socket.bind((self.ip, self.port))
-        except:
-           print("Error binding ", self.socket_name, " to requested address: ", e)
+        except Exception as e:
+           print("Error binding ", self.name, " to requested address: ", e)
         return self.command_socket
 
     def connect_sensor_socket(self):
         while(not self.connected):
             if self.sensor_socket != None:
                 try:
-                    connection, client_address = self.sensor_socket.accept()
-                    self.sensor_socket.settimeout(0.01)
+                    # Receives a single message over UDP to confirm the connection. 
+                    connection, client_address = self.sensor_socket.recvfrom(self.BUFFER_SIZE)
                     self.connected = True
                 except Exception as e:
-                    print("Error while receiving: ", e)
+                    print(self.name, "- Error while connecting: ", e)
         return connection, client_address
 
     def connect_command_socket(self):
-        command_socket.listen(3)
+        self.command_socket.listen(3)
         while not self.connected:
             try:
-                self.cmd_connection, client_address = self.command_socket.accept()
-                self.cmd_connection.settimeout(0.01)
+                # Sets the port to accept incoming connections
+                self.cmd_connection, self.client_address = self.command_socket.accept()
+                self.cmd_connection.settimeout(10.0)
                 self.connected = True
             except:
                 print('Could not connect ' + self.name)
-        return self.cmd_connection, client_address
+        return self.cmd_connection, self.client_address
 
     def send_command(self, cmd):
         self.cmd_connection.sendall(cmd.encode('utf-8'))

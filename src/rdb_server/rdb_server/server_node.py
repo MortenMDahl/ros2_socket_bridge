@@ -29,9 +29,11 @@ import socket
 from _thread import *
 import threading
 
-import rdb_server.serializer
-import rdb_server.thread_objects
-import rdb_server.server_sockets
+import time
+
+from rdb_server.serializer import *
+from rdb_server.thread_objects import *
+from rdb_server.server_sockets import *
 
 # from tcpSocket import TCPSocket
 #from udpSocket import UDPSocket
@@ -54,14 +56,14 @@ class ServerNode(Node):
         self.declare_parameter('server_ip')
         self.server_ip = str(self.get_parameter('server_ip').value)
 
-        print('Server IP: ', self.server_ip)
-        print('Server port: ', self.server_port)
 
-
-        self.port_list_data = []
-        self.port_list_commands = []
-        self.thread_objects = []
-        self.connection_list_cmd = []
+        self.data_ports = []
+        self.command_ports = []
+        self.recieve_objects = []
+        self.transmit_objects = []
+        self.command_connection_list = []
+        self.publisher_list = []
+        self.serializer = Serialization
 
 
         # Makes socket object and waits for connection
@@ -75,7 +77,7 @@ class ServerNode(Node):
         except socket.error as e:
             print('Error binding server socket: ' + str(e))
 
-        print(str(self.name) + ' waiting for connection...')
+        print(str(self.name) + ' waiting for connection at port ' + str(self.server_port) + '...')
         self.serverSocket.listen(5) # Enables the server to accept connections
 
         # Start thread which accept incoming connections
@@ -87,7 +89,7 @@ class ServerNode(Node):
 
         while rclpy.ok(): 
             self.server, address = self.serverSocket.accept() # Waits incoming connection
-            print(self.name, ': Data received from ' ,address[0] , ':' , address[1])
+            print(self.name + ': Data received from ' + str(address[0]) + ':' + str(address[1]))
 
             while msg == None:
                 msg = self.server.recv(2048)
@@ -102,49 +104,61 @@ class ServerNode(Node):
 
     def server_msg_handler(self, data):
         if data[0] == 'init':
-            self.server.send('Connected to server.'.encode('utf-8'))
             print('Received init message.')
             if data[1] == self.robot_name:
                 if data[2] == self.robot_type:
 
                     # Confirm with the client that the settings match
                     confirm_init_msg = 'Matching init received.'.encode('utf-8')
+                    print('Matching init. Confirming with client.')
                     self.server.send(confirm_init_msg)
 
-                    print(data)
-
                     # Establish port lists and convert contents to integers
-                    self.port_list_data = data[3].split(';')
-                    self.port_list_data = list(map(int, self.port_list_data))
+                    self.data_topics = list(data[3].split(';'))
+                    self.data_msg_types = list(data[4].split(';'))
+                    self.data_ports = list(data[5].split(';'))
+                    self.data_protocols = list(data[6].split(';'))
 
-                    self.port_list_commands = data[4].split(';')
-                    self.port_list_commands = list(map(int, self.port_list_commands))
+                    self.command_topics = list(data[7].split(';'))
+                    self.command_msg_types = list(data[8].split(';'))
+                    self.command_ports = list(data[9].split(';'))
+                    self.command_protocols = list(data[10].split(';'))
 
-                    if robot_type == 'mobile':
+                    # Takes the recieved data and assigns them to objects
+                    for i in range(len(self.data_topics)):
+                    	self.recieve_objects.append(BridgeObject('recieve', self.data_topics[i], self.data_msg_types[i], self.data_ports[i], self.data_protocols[i]))
 
-                        mobile_init(robot_name)
-                        # Manually create thread objects
-                        # TODO: Automate creation of thread objects.
-                        self.thread_objects.append(ThreadObject('laser', self.port_list_data[0], self.laser_pub))
-                        self.thread_objects.append(ThreadObject('odom', self.port_list_data[1], self.odom_pub))
+                    for j in range(len(self.command_topics)):
+                    	self.transmit_objects.append(BridgeObject('transmit', self.command_topics[i], self.command_msg_types[i], self.command_ports[i], self.command_protocols[i]))
 
-                        for thread_object in thread_objects:
+
+                    # VIDERE:
+                    # Må endre litt på server_sockets.
+                    # Skal nå lage connections og/eller threads basert på hva slags type og protokoll det er.
+                    # Kan kanskje droppe robot_type, i og med at alle topics nå blir initialisert basert på hva de skal sende regardless av hva de sender.
+                    # Kan slette mobile_init og heller bruke robot_init.
+                    # Sette sammen serveren og deretter fikse clienten.
+                    if self.robot_type == 'mobile':
+                        
+
+                    	self.mobile_init(self.thread_objects)
+
+                        
+                        for thread_object in self.thread_objects:
                             threading.Thread(target=self.data_stream_thread, args=(thread_object.name, thread_object.port, thread_object.publisher)).start()
 
 
-
-                    elif robot_type == 'manipulator':
-
-                        #self.thread_objects.append(ThreadObject('something', self.port_list_data[0], self.publisher_here))
-                        manipulator_init()
+                    elif self.robot_type == 'manipulator':
+                        #self.thread_objects.append(ThreadObject('something', self.data_ports[0], self.publisher_here))
+                        self.manipulator_init()
 
                         for thread_object in thread_objects:
-                            threading.Thread(target=self.data_stream_thread, args=(thread_object.name, thread_object.port, thread_object.publisher)).start()
+                            threading.Thread(target=self.data_stream_thread, args=(thread_object.name, thread_object.port, thread_object.publisher, thread_object.protocol)).start()
 
                         # Create threads for receiving data
                     elif robot_type == 'multi':
-                        mobile_init()
-                        manipulator_init()
+                        self.mobile_init()
+                        self.manipulator_init()
                         # Create threads for receiving data
                     else:
                         print('Error while initializing robot type: ' + robot_type)
@@ -165,66 +179,79 @@ class ServerNode(Node):
         # Function which starts threaded connections for topics
             # Same IP, port listed in init message
 
-    def data_stream_thread(self, thread_name, port, pub):
+    def data_stream_thread(self, thread_name, port, pub, protocol):
+        # Create a socket object
+        soc = Sockets(self.server_ip, port, thread_name)
+        # Create a sensor_socket inside the socket object and bind it.
+        sensor_soc = soc.sensor_socket()
 
-        # Create a sensor_socket inside the socket object
-        soc = Sockets.sensor_socket(self.ip, port, thread_name)
+        # Bind the socket
+        address = (self.server_ip, int(port))
+        sensor_soc.bind(address)
 
         connected = False
-        print(thread_name + " thread started.\n Connecting... ")
-
+        print(thread_name + " thread started.\nConnecting... ")
         cli, addr = soc.connect_sensor_socket()
+
         print(thread_name + ' thread: Connection successful.')
         connected = True
 
         if thread_name == 'laser':
             while connected:
-                data = cli.recv(2048) # Endre størrelse på buffer?
-                data = data.decode('utf-8')
-
-                laser_msg = Serializer.laser_deserialize(data)
+                msg, addr = sensor_soc.recvfrom(2048) # Endre størrelse på buffer?
+                msg = msg.decode('utf-8')	
+                laser_msg = self.serializer.laser_deserialize(msg)
 
                 pub.publish(laser_msg)
 
         elif thread_name == 'odom':
             while connected:
-                data = cli.recv(2048) # Endre størrelse på buffer?
-                data = data.decode('utf-8')
+                msg, addr = sensor_soc.recvfrom(2048) # Endre størrelse på buffer?
 
-                odom_msg = Serializer.odom_deserialize(data)
+                msg = msg.decode('utf-8')
+
+                odom_msg = self.serializer.odom_deserialize(msg)
 
                 pub.publish(odom_msg)
 
         elif thread_name == 'something_else':
             while connected:
-                data = cli.recv(2048)
+                data = cli.recvfrom(2048)
                 # Mer her
+
+    def robot_init(self, robot_info):
 
 
 
     def mobile_init(self, robot_name):
+    	for name in self.data_topics:
+    		self.publisher_list.append()
+    	# Disse burde være i en param liste eller bli mottatt av roboten.
 
-        # Make callback functions
-        #   -> Create sockets for sending messages
-        #   -> execute callback functions
 
         command_topic_names = ['init_nav_pose', 'goal_nav_pose']
-        for i in range(len(self.port_list_commands)):
-            cmd_soc = Sockets.command_socket(self.ip, self.port_list_commands[i], command_topic_names[i])
-            cmd_connection, cmd_client_address = cmd_soc.connect_sensor_socket()
-            self.connection_list_cmd.append([cmd_soc, cmd_connection, cmd_client_address])
+        for i in range(len(self.command_ports)):
+            soc = Sockets(self.server_ip, int(self.command_ports[i]), command_topic_names[i])
+            cmd_soc = soc.command_socket()
 
-        self.init_nav_pose_sub = create_subscriber(PoseWithCovarianceStamped, robot_name + '/initialpose', self.init_nav_pose_callback, 10)
-        self.goal_nav_pose_sub = create_subscriber(PoseStamped, robot_name + '/goal_pose', self.goal_nav_pose_callback, 10)
+            # Bind the socket
+            address = (self.server_ip, int(self.command_ports[i]))
+            cmd_soc.bind(address)
+
+            cmd_connection, cmd_client_address = soc.connect_command_socket()
+            self.command_connection_list.append([cmd_soc, cmd_connection, cmd_client_address])
+
+        self.init_nav_pose_sub = self.create_subscription(PoseWithCovarianceStamped, robot_name + '/initialpose', self.init_nav_pose_callback, 10)
+        self.goal_nav_pose_sub = self.create_subscription(PoseStamped, robot_name + '/goal_pose', self.goal_nav_pose_callback, 10)
 
         # TODO: Create threads for incoming data
         # These has to be spesific to type of robot. Possibly create publishers when connections are made.
-        self.odom_pub = create_publisher(Odometry, robot_name + '/odom', 10)
-        self.laser_pub = create_publisher(LaserScan, robot_name + '/scan', 10)
+        self.odom_pub = self.create_publisher(Odometry, robot_name + '/odom', 10)
+        self.laser_pub = self.create_publisher(LaserScan, robot_name + '/scan', 10)
 
     def manipulator_init(self, robot_name):
         # Skal nok være en publisher
-        self.joint_pos_sub = create_subscription(JointState, 'joint_states', self.joint_callback, 10)
+        self.joint_pos_sub = self.create_subscription(JointState, 'joint_states', self.joint_callback, 10)
 
         # Skal nok være en subscriber
         self.goal_manipulator_pose_pub = None # TODO
@@ -232,11 +259,14 @@ class ServerNode(Node):
 
     def init_nav_pose_callback(self, msg):
         serialized_msg = Serializer.pose_covar_stamped_serialize(msg)
-        self.connection_list_cmd[0,1].send(serialized_msg)
+        self.command_connection_list[0,1].send(serialized_msg)
 
     def goal_nav_pose_callback(self, msg):
         serialized_msg = Serializer.pose_stamped_serialize(msg)
-        self.connection_list_cmd[1,1].send(serialized_msg)
+        self.command_connection_list[1,1].send(serialized_msg)
+
+    def str_to_class(self, classname):
+    	return getattr(sys.modules[__name__], classname)
 
 
 def main(argv=sys.argv[1:]):

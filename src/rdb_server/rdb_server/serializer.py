@@ -22,17 +22,19 @@ from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 
 
-class Serializer:
+class Serialization:
 
-	def serialize_header(self, data):
+	def serialize_header(data):
 		out = str(data.header.stamp.sec) + ';'
 		out += str(data.header.stamp.nanosec) + ';'
 		out += str(data.header.frame_id) + ':'
 		return out
 
 
-	def laser_serialize(self, data):
-		out = serialize_header(data)
+	def serialize_laser(data):
+		out = str(data.header.stamp.sec) + ';'
+		out += str(data.header.stamp.nanosec) + ';'
+		out += str(data.header.frame_id) + ':'
 
 		out += str(data.angle_min) + ';'
 		out += str(data.angle_max) + ';'
@@ -44,17 +46,18 @@ class Serializer:
 
 		for i in range(len(data.ranges)):
 			out += str(data.ranges[i]) + ';'
-		out[-1] = ':'
+		out = out[:-1]
+		out += ':'
 
 		for j in range(len(data.intensities)):
 			out += str(data.intensities[j]) + ';'
-		out[-1] = ''
+		out = out[:-1]
 
 		return out
 
 
 
-	def laser_deserialize(self, data):
+	def laser_deserialize(data):
 		lasermsg = LaserScan()
 		data = data.split(':')
 
@@ -63,31 +66,31 @@ class Serializer:
 		lasermsg.header.stamp.nanosec = int(headerdata[1])
 		lasermsg.header.frame_id = headerdata[2]
 
-		laserdata = data[1].split[';']
-		lasermsg.angle_min = double(laserdata[0])
-		lasermsg.angle_max = double(laserdata[1])
-		lasermsg.angle_increment = double(laserdata[2])
-		lasermsg.time_increment = double(laserdata[3])
-		lasermsg.scan_time = double(laserdata[4])
-		lasermsg.range_min = double(laserdata[5])
-		lasermsg.range_max = double(laserdata[6])
+		laserdata = data[1].split(';')
+		lasermsg.angle_min = float(laserdata[0])
+		lasermsg.angle_max = float(laserdata[1])
+		lasermsg.angle_increment = float(laserdata[2])
+		lasermsg.time_increment = float(laserdata[3])
+		lasermsg.scan_time = float(laserdata[4])
+		lasermsg.range_min = float(laserdata[5])
+		lasermsg.range_max = float(laserdata[6])
 
-		rangedata = data[2].split[';']
-		lasermsg.ranges = []
-		for i in range(len(rangedata)):
-			lasermsg.ranges.append(double(rangedata[i]))
-
-		intensitydata = data[3].split[';']
-		lasermsg.intensities = []
-		for i in range(len(intensitydata)):
-			lasermsg.intensities.append(double(intensitydata[i]))
+		rangedata = data[2].split(';')
+		lasermsg.ranges = [float(rangevar or 'inf') for rangevar in rangedata]
+		if len(data) > 3:
+			intensitydata = data[3].split(';')
+			lasermsg.intensities = [float(intensity or 'inf') for intensity in intensitydata]
+		else:
+			lasermsg.intensities = []
 
 		return lasermsg
 
 
 
-	def odom_serialize(self, data):
-		out = serialize_header(data)
+	def serialize_odom(data):
+		out = str(data.header.stamp.sec) + ';'
+		out += str(data.header.stamp.nanosec) + ';'
+		out += str(data.header.frame_id) + ':'
 
 		out += str(data.child_frame_id) + ':'
 
@@ -111,7 +114,7 @@ class Serializer:
 
 
 
-	def odom_deserialize(self, data):
+	def odom_deserialize(data):
 		odommsg = Odometry()
 		data = data.split(':')
 
@@ -134,9 +137,8 @@ class Serializer:
 		odommsg.pose.pose.orientation.w = float(orientdata[3])
 
 		covar_posedata = data[4].split(';')
-		odommsg.pose.covariance = []
-		for i in range(len(covar_posedata)):
-			odommsg.pose.covariance.append(float(covar_posedata[i]))
+
+		odommsg.pose.covariance = [float(covar_data or 'inf') for covar_data in covar_posedata]
 
 		twistdata_linear = data[5].split(';')
 		odommsg.twist.twist.linear.x = float(twistdata_linear[0])
@@ -149,15 +151,14 @@ class Serializer:
 		odommsg.twist.twist.angular.z = float(twistdata_angular[2])
 
 		covar_twistdata = data[7].split(';')
-		odommsg.twist.covariance = []
-		for j in range(len(covar_twistdata)):
-			odommsg.twist.covariance.append(float(covar_twistdata[j]))
-
+		odommsg.twist.covariance = [float(covar_data or 'inf') for covar_data in covar_twistdata]
 		return odommsg
 
 	# For use in /initialpose
-	def pose_covar_stamped_serialize(self, data):
-		out = serialize_header(data)
+	def pose_covar_stamped_serialize(data):
+		out = str(data.header.stamp.sec) + ';'
+		out += str(data.header.stamp.nanosec) + ';'
+		out += str(data.header.frame_id) + ':'
 
 		out += str(data.pose.pose.position.x) + ';' + str(data.pose.pose.position.y) + ';' + str(data.pose.pose.position.z) + ':'
 		
@@ -168,7 +169,7 @@ class Serializer:
 		out = out[:-1]
 		return out
 
-	def pose_covar_stamped_deserialize(self, data):
+	def pose_covar_stamped_deserialize(data):
 		posemsg = PoseWithCovarianceStamped()
 		data = data.split(':')
 
@@ -180,31 +181,30 @@ class Serializer:
 		posemsg.child_frame_id = data[1]
 
 		posedata = data[2].split(';')
-		posemsg.pose.pose.position.x = double(posedata[0])
-		posemsg.pose.pose.position.y = double(posedata[1])
-		posemsg.pose.pose.position.z = double(posedata[2])
+		posemsg.pose.pose.position.x = float(posedata[0])
+		posemsg.pose.pose.position.y = float(posedata[1])
+		posemsg.pose.pose.position.z = float(posedata[2])
 
 		orientdata = data[3].split(';')
-		posemsg.pose.pose.orientation.x = double(orientdata[0])
-		posemsg.pose.pose.orientation.y = double(orientdata[1])
-		posemsg.pose.pose.orientation.z = double(orientdata[2])
-		posemsg.pose.pose.orientation.w = double(orientdata[3])
+		posemsg.pose.pose.orientation.x = float(orientdata[0])
+		posemsg.pose.pose.orientation.y = float(orientdata[1])
+		posemsg.pose.pose.orientation.z = float(orientdata[2])
+		posemsg.pose.pose.orientation.w = float(orientdata[3])
 
 		covar = data[4].split(';')
-		posemsg.pose.covariance = []
-		for i in range(len(covar)):
-			posemsg.pose.covariance.append(double(covar[i]))
+		posemsg.pose.covariance = [float(covar_data or 'inf') for covar_data in covar]
+		return posemsg
 
 
 
 
-	def pose_stamped_serialize(self, data):
-		out = serialize_header(data)
+	def pose_stamped_serialize(data):
+		out = self.serialize_header(data)
 
 		out += str(data.pose.pose.position.x) + ';' + str(data.pose.pose.position.y) + ';' + str(data.pose.pose.position.z) + ':'
 		out += str(data.pose.pose.orientation.x) + ';' + str(data.pose.pose.orientation.y) + ';' + str(data.pose.pose.orientation.z) + ';' + str(data.pose.pose.orientation.w)
 
-	def pose_stamped_deserialize(self, data):
+	def pose_stamped_deserialize(data):
 		posemsg = PoseStamped()
 		data = data.split(';')
 
@@ -214,23 +214,23 @@ class Serializer:
 		posemsg.header.frame_id = headerdata[2]
 
 		posedata = data[1].split(';')
-		posemsg.pose.pose.position.x = double(posedata[0])
-		posemsg.pose.pose.position.y = double(posedata[1])
-		posemsg.pose.pose.position.z = double(posedata[2])
+		posemsg.pose.pose.position.x = float(posedata[0])
+		posemsg.pose.pose.position.y = float(posedata[1])
+		posemsg.pose.pose.position.z = float(posedata[2])
 
 		orientdata = data[2].split(';')
-		posemsg.pose.pose.orientation.x = double(orientdata[0])
-		posemsg.pose.pose.orientation.y = double(orientdata[1])
-		posemsg.pose.pose.orientation.z = double(orientdata[2])
-		posemsg.pose.pose.orientation.w = double(orientdata[3])
+		posemsg.pose.pose.orientation.x = float(orientdata[0])
+		posemsg.pose.pose.orientation.y = float(orientdata[1])
+		posemsg.pose.pose.orientation.z = float(orientdata[2])
+		posemsg.pose.pose.orientation.w = float(orientdata[3])
 
 		return posemsg
 
 
-	def joint_pos_serialize(self, data):
+	def joint_pos_serialize(data):
 		return -1
 		#TODO
 
-	def joint_pos_deserialize(self, data):
+	def joint_pos_deserialize(data):
 		return -1
 		#TODO

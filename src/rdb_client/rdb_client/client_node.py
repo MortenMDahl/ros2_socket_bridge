@@ -28,6 +28,8 @@ import argparse
 from _thread import *
 import socket
 
+import time
+from rdb_client.serializer import *
 # from tcpSocket import TCPSocket
 #from udpSocket import UDPSocket
 
@@ -41,84 +43,171 @@ class ClientNode(Node):
     def __init__(self, robot_name, robot_type):
         super().__init__('client_node')
         self.robot_name = str(robot_name)
+        self.robot_type = str(robot_type)
         self.name = robot_name + '_client_node'
+
+        connected = False
+
+        # Creates serialization object
+        self.serializer = Serialization
 
         # Get parameters from config file
         self.declare_parameter('server_ip')
         self.server_ip = str(self.get_parameter('server_ip').value)
-        print('Server IP:', self.server_ip)
-
         self.declare_parameter('server_port')
         self.server_port = int(self.get_parameter('server_port').value or 0)
-        print('Server port:', self.server_port)
 
-        self.declare_parameter('port_list_data')
-        self.port_list_data = self.get_parameter('port_list_data').value
-        print("port_list_data: ", self.port_list_data)
+        self.declare_parameter('data_topics')
+        self.data_topics = self.get_parameter('data_topics').value
+        self.declare_parameter('data_msg_types')
+        self.data_msg_types = self.get_parameter('data_msg_types').value
+        self.declare_parameter('data_ports')
+        self.data_ports = self.get_parameter('data_ports').value
+        self.declare_parameter('data_protocols')
+        self.data_protocols = self.get_parameter('data_protocols').value
 
-        self.declare_parameter('port_list_commands')
-        self.port_list_commands = self.get_parameter('port_list_commands').value
-        print("port_list_commands: ", self.port_list_commands)
+        self.declare_parameter('command_topics')
+        self.command_topics = self.get_parameter('command_topics').value
+        self.declare_parameter('command_msg_types')
+        self.command_msg_types = self.get_parameter('command_msg_types').value
+        self.declare_parameter('command_ports')
+        self.command_ports = self.get_parameter('command_ports').value
+        self.declare_parameter('command_protocols')
+        self.command_protocols = self.get_parameter('command_protocols').value
+
+        if not (len(self.data_topics) == len(self.data_ports) == len(self.data_protocols)):
+            raise Exception('Data topics not matching amount of ports or protocols assigned. Shutting down.')
+            rclpy.shutdown()
+
+        if not (len(self.command_topics) == len(self.command_ports) == len(self.command_protocols)):
+            raise Exception('Command topics not matching amount of ports or protocols assigned. Shutting down.')
+            rclpy.shutdown()
 
 
-        #self.port_list_data = []
-        #self.port_list_commands = []
         self.thread_objects = []
         self.connection_list_cmd = []
 
         connection_response = None
 
         # Create initial message for setting up multiple sockets on the server
-        init_msg = 'init:' + robot_name + ':' + robot_type + ':'
-        for i in range(len(self.port_list_data)):
-            init_msg += str(self.port_list_data[i]) + ';'
-        init_msg = init_msg[:-1]
-        init_msg+=':'
-        for j in range(len(self.port_list_commands)):
-            init_msg += str(self.port_list_commands) + ';'
-        init_msg = init_msg[:-1]
+        init_msg = 'init:'                                      # 0
+        + robot_name + ':'                                      # 1
+        + robot_type + ':'                                      # 2
 
-        # Create socket object and connect to server
+        for i in range(len(self.data_topics)):
+            init_msg += str(self.data_topics[i]) + ';'
+        init_msg = init_msg[:-1]                                # 3
+        init_msg += ':'
+
+        for j in range(len(self.data_msg_types)):
+            init_msg += str(self.data_msg_types[j]) + ';'
+        init_msg = init_msg[:-1]                                # 4
+        init_msg += ':'    
+
+        for k in range(len(self.data_ports)):
+            init_msg += str(self.data_ports[k]) + ';'
+        init_msg = init_msg[:-1]                                # 5
+        init_msg += ':'
+
+        for l in range(len(self.data_protocols)):
+            init_msg += str(self.data_protocols[l]) + ';'
+        init_msg = init_msg[:-1]                                # 6
+        init_msg += ':'
+
+        for m in range(len(self.command_topics)):
+            init_msg += str(self.command_topics[m]) + ';'
+        init_msg = init_msg[:-1]                                # 7
+        init_msg += ':'
+
+        for n in range(len(self.command_msg_types)):
+            init_msg += str(self.command_msg_types[n]) + ';'
+        init_msg = init_msg[:-1]                                # 8
+        init_msg += ':'
+
+        for o in range(len(self.command_ports)):
+            init_msg += str(self.command_ports[o]) + ';'
+        init_msg = init_msg[:-1]                                # 9
+        init_msg += ':'
+
+        for p in range(len(self.command_protocols)):
+            init_msg += str(self.command_protocols[p]) + ';'
+        init_msg = init_msg[:-1]                                # 10
+
+
+        # Create a TCP socket object and connect to server
         self.clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.clientSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
         print('Connecting to server...')
-        try:
-            self.clientSocket.connect_ex((self.server_ip, self.server_port))
-        except socket.error as e:
-            print('Error: ' + str(e))
+        
+        while not connected:
+            try:
+                self.clientSocket.connect_ex((self.server_ip, self.server_port))
+                connected = True
+            except socket.error as e:
+                pass
 
         # Send the init message and wait for response
+        print('Connected! Sending init message...')
         self.clientSocket.send(init_msg.encode('utf-8'))
-        while connection_response == None:
-            connection_response = self.clientSocket.recv(2048)
-            connection_response.decode('utf-8')
+        connection_response = self.clientSocket.recv(2048)
 
+        connection_response = connection_response.decode('utf-8')
+
+        while connection_response != None:
             if connection_response == 'Matching init received.':
+                print('Matching init confirmed.')
                 if robot_type == 'mobile':
-                    mobile_init()
+                    self.mobile_init()
 
                     # Create threads which takes incoming messages and publishes to correct topic
                     # Create callback which serializes and sends messages
 
                 elif robot_type == 'manipulator':
-                    manipulator_init()
+                    self.manipulator_init()
 
                 elif robot_type == 'multi':
-                    mobile_init()
-                    manipulator_init()
+                    self.mobile_init()
+                    self.manipulator_init()
+            else:
+                print(connection_response)
+
+            connection_response = None
 
             # Start sending to correct ports
         #do stuff with incoming based on topics
 
 
     def mobile_init(self):
-        self.laser = socket.socket() # Maybe change to a set socket object? Like TCP, UDP or other
-        self.odom = socket.socket()
-        self.goal_nav = socket.socket()
-        self.init_nav = socket.socket()
+        # TCP sockets - TODO: Automate this based on a list?
+        self.init_nav = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.init_nav.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
+        time.sleep(1) # Waiting due to server being slightly slower while initializing
+
+        print('Connecting init_nav')
+        self.init_nav.connect((self.server_ip, self.command_ports[0]))
+
+        self.goal_nav = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.goal_nav.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
+        time.sleep(1) # Waiting due to server being slightly slower while initializing
+
+        print('Connecting nav_goal')
+        self.goal_nav.connect((self.server_ip, self.command_ports[1]))
+
+        # UDP sockets
+        print('Connecting laser')
+        self.laser = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.laser.settimeout(0.1)
+        self.laser.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,1048576)
+
+        print('Connecting odom')
+        self.odom = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.odom.settimeout(0.1)
+        self.odom.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,1048576)
+
+        
 
         odom_sub = self.create_subscription(Odometry, 'odom', self.odom_callback, 10)
-        laser_sub = self.create_subscription(LaserScan, 'scan', self.scan_callback, 10)
+        laser_sub = self.create_subscription(LaserScan, 'scan', self.scan_callback, rclpy.qos.qos_profile_sensor_data)
 
         # TODO: Create threads for incoming data
         init_nav_pose_pub = self.create_publisher(PoseWithCovarianceStamped, 'initialpose', 10)
@@ -131,13 +220,14 @@ class ClientNode(Node):
         # TODO: Create threads for incoming data and posting to correct subs
 
 
-    def laser_callback(self):
-        return -1
-        #encode laser data
-        #send to correct port
+    def scan_callback(self, data):
+        scan_serialized = self.serializer.serialize_laser(data)
+        self.laser.sendto(scan_serialized.encode('utf-8'), (self.server_ip, self.data_ports[0]))
 
-    def odom_callback(self):
-        return -1
+    def odom_callback(self, data):
+        odom_serialized = self.serializer.serialize_odom(data)
+        self.odom.sendto(odom_serialized.encode('utf-8'), (self.server_ip, self.data_ports[1]))
+
 
 def main(argv=sys.argv[1:]):
     # Get parameters from launch file
