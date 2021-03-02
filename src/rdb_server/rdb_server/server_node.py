@@ -43,253 +43,308 @@ from rdb_server.server_sockets import *
 
 
 class ServerNode(Node):
-    def __init__(self, robot_name, robot_type, server_port):
-        super().__init__('server_node')
-        self.robot_name = str(robot_name)
-        self.robot_type = str(robot_type)
+	def __init__(self, robot_name, robot_type, server_port):
+		super().__init__('server_node')
+		self.robot_name = str(robot_name)
+		self.robot_type = str(robot_type)
 
-        self.name = self.robot_name + '_server_node'
+		self.name = self.robot_name + '_server_node'
 
-        self.server_port = int(server_port or 0)
+		self.server_port = int(server_port or 0)
 
-        # Get parameter from bringup.yaml
-        self.declare_parameter('server_ip')
-        self.server_ip = str(self.get_parameter('server_ip').value)
-
-
-        self.data_ports = []
-        self.command_ports = []
-        self.recieve_objects = []
-        self.transmit_objects = []
-        self.command_connection_list = []
-        self.publisher_list = []
-        self.serializer = Serialization
+		# Get parameter from bringup.yaml
+		self.declare_parameter('server_ip')
+		self.server_ip = str(self.get_parameter('server_ip').value)
 
 
-        # Makes socket object and waits for connection
+		self.data_ports = []
+		self.command_ports = []
+		self.recieve_objects = []
+		self.transmit_objects = []
+		self.command_connection_list = []
+		self.publisher_list = []
+		self.serializer = Serialization
 
-        self.serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
+		self.UDP_PROTOCOL = 'UDP'
+		self.TCP_PROTOCOL = 'TCP'
+		self.DIRECTION_RECIEVE = 'recieve'
+		self.DIRECTION_TRANSMIT = 'transmit'
+		self.BUFFER_SIZE = 4096
 
-        try:
-            self.serverSocket.bind((self.server_ip, self.server_port))
+		# Makes socket object and waits for connection
 
-        except socket.error as e:
-            print('Error binding server socket: ' + str(e))
+		self.serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		self.serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
 
-        print(str(self.name) + ' waiting for connection at port ' + str(self.server_port) + '...')
-        self.serverSocket.listen(5) # Enables the server to accept connections
+		try:
+			self.serverSocket.bind((self.server_ip, self.server_port))
 
-        # Start thread which accept incoming connections
-        # and handles received messages
-        threading.Thread(target=self.server_handler).start()
+		except socket.error as e:
+			print('Error binding server socket: ' + str(e))
 
-    def server_handler(self):
-        msg = None
+		print(str(self.name) + ' waiting for connection at port ' + str(self.server_port) + '...')
+		self.serverSocket.listen(5) # Enables the server to accept connections
 
-        while rclpy.ok(): 
-            self.server, address = self.serverSocket.accept() # Waits incoming connection
-            print(self.name + ': Data received from ' + str(address[0]) + ':' + str(address[1]))
+		# Start thread which accept incoming connections
+		# and handles received messages
+		threading.Thread(target=self.server_handler).start()
 
-            while msg == None:
-                msg = self.server.recv(2048)
-                data = msg.decode('utf-8').split(':')
+	def server_handler(self):
+		msg = None
 
-            # Reset the msg for next cycle
-            msg = None
+		while rclpy.ok(): 
+			self.server, address = self.serverSocket.accept() # Waits incoming connection
+			print(self.name + ': Data received from ' + str(address[0]) + ':' + str(address[1]))
 
-            # Handle the received message
-            self.server_msg_handler(data)
+			while msg == None:
+				msg = self.server.recv(2048)
+				data = msg.decode('utf-8').split(':')
 
+			# Reset the msg for next cycle
+			msg = None
 
-    def server_msg_handler(self, data):
-        if data[0] == 'init':
-            print('Received init message.')
-            if data[1] == self.robot_name:
-                if data[2] == self.robot_type:
+			# Handle the received message
+			self.server_msg_handler(data)
 
-                    # Confirm with the client that the settings match
-                    confirm_init_msg = 'Matching init received.'.encode('utf-8')
-                    print('Matching init. Confirming with client.')
-                    self.server.send(confirm_init_msg)
+	def recieve_connection_thread(self, obj):
+		if obj.protocol == self.UDP_PROTOCOL:
+			while not obj.connected:
+				try:
+					connection, client_address = obj.soc.recvfrom(self.BUFFER_SIZE)
+					obj.connected = True
+				except Exception as e:
+					print(self.name, "- Error while connecting: ", e)
 
-                    # Establish port lists and convert contents to integers
-                    self.data_topics = list(data[3].split(';'))
-                    self.data_msg_types = list(data[4].split(';'))
-                    self.data_ports = list(data[5].split(';'))
-                    self.data_protocols = list(data[6].split(';'))
+			print(str(obj.name) + " connected!")
 
-                    self.command_topics = list(data[7].split(';'))
-                    self.command_msg_types = list(data[8].split(';'))
-                    self.command_ports = list(data[9].split(';'))
-                    self.command_protocols = list(data[10].split(';'))
+			while obj.connected:
+				data, addr = obj.soc.recvfrom(self.BUFFER_SIZE)
+				serialized_msg = data.decode('utf-8')
 
-                    # Takes the recieved data and assigns them to objects
-                    for i in range(len(self.data_topics)):
-                    	self.recieve_objects.append(BridgeObject('recieve', self.data_topics[i], self.data_msg_types[i], self.data_ports[i], self.data_protocols[i]))
-
-                    for j in range(len(self.command_topics)):
-                    	self.transmit_objects.append(BridgeObject('transmit', self.command_topics[i], self.command_msg_types[i], self.command_ports[i], self.command_protocols[i]))
-
-
-                    # VIDERE:
-                    # Må endre litt på server_sockets.
-                    # Skal nå lage connections og/eller threads basert på hva slags type og protokoll det er.
-                    # Kan kanskje droppe robot_type, i og med at alle topics nå blir initialisert basert på hva de skal sende regardless av hva de sender.
-                    # Kan slette mobile_init og heller bruke robot_init.
-                    # Sette sammen serveren og deretter fikse clienten.
-                    if self.robot_type == 'mobile':
-                        
-
-                    	self.mobile_init(self.thread_objects)
-
-                        
-                        for thread_object in self.thread_objects:
-                            threading.Thread(target=self.data_stream_thread, args=(thread_object.name, thread_object.port, thread_object.publisher)).start()
+				deserialized_msg = self.serializer.deserialize(self.str_to_class(obj.msg_type), serialized_msg)
+				obj.publisher.publish(deserialized_msg)
 
 
-                    elif self.robot_type == 'manipulator':
-                        #self.thread_objects.append(ThreadObject('something', self.data_ports[0], self.publisher_here))
-                        self.manipulator_init()
+		elif obj.protocol == self.TCP_PROTOCOL:
+			while not obj.connected:
+				obj.connection, obj.address = obj.soc.accept()
+				obj.connected = True
 
-                        for thread_object in thread_objects:
-                            threading.Thread(target=self.data_stream_thread, args=(thread_object.name, thread_object.port, thread_object.publisher, thread_object.protocol)).start()
-
-                        # Create threads for receiving data
-                    elif robot_type == 'multi':
-                        self.mobile_init()
-                        self.manipulator_init()
-                        # Create threads for receiving data
-                    else:
-                        print('Error while initializing robot type: ' + robot_type)
-                        # exit?
-
-                        # Connect initialized sockets from **_init
-                else:
-                    print('Error: robot_type does not match with client.')
-            else:
-                print('Error: robot_name does not match with client.')
-        else:
-            # What to do if message is not init
-            # "Disconnect" message?
-
-            print(str(data))
-
-        # Receive init message from robot
-        # Function which starts threaded connections for topics
-            # Same IP, port listed in init message
-
-    def data_stream_thread(self, thread_name, port, pub, protocol):
-        # Create a socket object
-        soc = Sockets(self.server_ip, port, thread_name)
-        # Create a sensor_socket inside the socket object and bind it.
-        sensor_soc = soc.sensor_socket()
-
-        # Bind the socket
-        address = (self.server_ip, int(port))
-        sensor_soc.bind(address)
-
-        connected = False
-        print(thread_name + " thread started.\nConnecting... ")
-        cli, addr = soc.connect_sensor_socket()
-
-        print(thread_name + ' thread: Connection successful.')
-        connected = True
-
-        if thread_name == 'laser':
-            while connected:
-                msg, addr = sensor_soc.recvfrom(2048) # Endre størrelse på buffer?
-                msg = msg.decode('utf-8')	
-                laser_msg = self.serializer.laser_deserialize(msg)
-
-                pub.publish(laser_msg)
-
-        elif thread_name == 'odom':
-            while connected:
-                msg, addr = sensor_soc.recvfrom(2048) # Endre størrelse på buffer?
-
-                msg = msg.decode('utf-8')
-
-                odom_msg = self.serializer.odom_deserialize(msg)
-
-                pub.publish(odom_msg)
-
-        elif thread_name == 'something_else':
-            while connected:
-                data = cli.recvfrom(2048)
-                # Mer her
-
-    def robot_init(self, robot_info):
+			while obj.connected:
+				data = obj.connection.recv(self.BUFFER_SIZE)
+				msg = self.serializer.deserialize(data)
+				obj.publisher.publish(msg)
 
 
 
-    def mobile_init(self, robot_name):
-    	for name in self.data_topics:
-    		self.publisher_list.append()
-    	# Disse burde være i en param liste eller bli mottatt av roboten.
+	def server_msg_handler(self, data):
+		if data[0] == 'init':
+			print('Received init message.')
+			if data[1] == self.robot_name:
+
+				# Confirm with the client that the settings match
+				confirm_init_msg = 'Matching init received.'.encode('utf-8')
+				print('Matching init. Confirming with client.')
+				self.server.send(confirm_init_msg)
+
+				# Establish port lists and convert contents to integers
+				self.data_topics = list(data[2].split(';'))
+				self.data_msg_types = list(data[3].split(';'))
+
+				self.data_ports = list(data[4].split(';'))
+				self.data_ports = [int(port) for port in self.data_ports]
+
+				self.data_protocols = list(data[5].split(';'))
+				self.data_qos = []
+
+				data_qos_temp = list(data[6].split(';'))
+
+				for qos in data_qos_temp:
+					try:
+						self.data_qos.append(int(qos))
+					except Exception:
+						self.data_qos.append(self.str_to_class(qos))
+
+				self.command_topics = list(data[7].split(';'))
+				self.command_msg_types = list(data[8].split(';'))
+				self.command_ports = list(data[9].split(';'))
+				self.command_ports = [int(port) for port in self.command_ports]
+				self.command_protocols = list(data[10].split(';'))
+				self.command_qos = []
+
+				command_qos_temp = list(data[11].split(';'))
+				
+				for qos in command_qos_temp:
+					try:
+						self.command_qos.append(int(qos))
+					except Exception:
+						self.command_qos.append(self.str_to_class(qos))
 
 
-        command_topic_names = ['init_nav_pose', 'goal_nav_pose']
-        for i in range(len(self.command_ports)):
-            soc = Sockets(self.server_ip, int(self.command_ports[i]), command_topic_names[i])
-            cmd_soc = soc.command_socket()
+				# Takes the recieved data and assigns them to objects
+				for i in range(len(self.data_topics)):
+					self.recieve_objects.append(BridgeObject(self.DIRECTION_RECIEVE, self.data_topics[i], self.data_msg_types[i], self.data_ports[i], self.data_protocols[i], self.data_qos[i]))
 
-            # Bind the socket
-            address = (self.server_ip, int(self.command_ports[i]))
-            cmd_soc.bind(address)
+				for j in range(len(self.command_topics)):
+					self.transmit_objects.append(BridgeObject(self.DIRECTION_TRANSMIT, self.command_topics[j], self.command_msg_types[j], self.command_ports[j], self.command_protocols[j], self.command_qos[j]))
 
-            cmd_connection, cmd_client_address = soc.connect_command_socket()
-            self.command_connection_list.append([cmd_soc, cmd_connection, cmd_client_address])
+				# Prepairing recieve_objects to be used communication
+				for obj in self.recieve_objects:
+					# Fixes qos based on integer or string, turning it into a class if string is given.
+					obj.publisher = self.create_publisher(self.str_to_class(obj.msg_type), self.robot_name + '/' + obj.name, obj.qos)
 
-        self.init_nav_pose_sub = self.create_subscription(PoseWithCovarianceStamped, robot_name + '/initialpose', self.init_nav_pose_callback, 10)
-        self.goal_nav_pose_sub = self.create_subscription(PoseStamped, robot_name + '/goal_pose', self.goal_nav_pose_callback, 10)
+					if obj.protocol == self.UDP_PROTOCOL:
+						# Creates an UDP socket
+						try:
+							obj.soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+							obj.soc.settimeout(15)
+							obj.soc.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,1048576)
+							obj.soc.bind((self.server_ip, int(obj.port)))
+						except Exception as e:
+							print("Error binding ", obj.name, " to requested address: ", e)
 
-        # TODO: Create threads for incoming data
-        # These has to be spesific to type of robot. Possibly create publishers when connections are made.
-        self.odom_pub = self.create_publisher(Odometry, robot_name + '/odom', 10)
-        self.laser_pub = self.create_publisher(LaserScan, robot_name + '/scan', 10)
+					elif obj.protocol == self.TCP_PROTOCOL:
+						# Creates a TCP socket
+						try:
+							obj.soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+							obj.soc.settimeout(15)
+							obj.soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
+							obj.soc.bind((self.server_ip, int(obj.port)))
+							obj.soc.listen(3)
+						except Exception as e:
+							print("Error binding ", obj.name, " to requested address: ", e)
 
-    def manipulator_init(self, robot_name):
-        # Skal nok være en publisher
-        self.joint_pos_sub = self.create_subscription(JointState, 'joint_states', self.joint_callback, 10)
+					# Creates thread for connecting the sockets and handling incoming data based on protocol.
+					# sende inn kun connection eller socket basert på TCP eller UDP?
+					threading.Thread(target=self.recieve_connection_thread, args = [obj]).start()
 
-        # Skal nok være en subscriber
-        self.goal_manipulator_pose_pub = None # TODO
-        # TODO: Create threads for incoming data and posting to correct subs
+				# Creating subscriptions with callback functions for transmit_objects.
+				for obj in self.transmit_objects:
+					obj.subscriber = self.create_subscription(self.str_to_class(obj.msg_type), obj.name, obj.callback, obj.qos)
 
-    def init_nav_pose_callback(self, msg):
-        serialized_msg = Serializer.pose_covar_stamped_serialize(msg)
-        self.command_connection_list[0,1].send(serialized_msg)
+			else:
+				print('Error: robot_name does not match with client.')
+		else:
+			# What to do if message is not init
+			# "Disconnect" message?
 
-    def goal_nav_pose_callback(self, msg):
-        serialized_msg = Serializer.pose_stamped_serialize(msg)
-        self.command_connection_list[1,1].send(serialized_msg)
+			print(str(data))
 
-    def str_to_class(self, classname):
-    	return getattr(sys.modules[__name__], classname)
+		# Receive init message from robot
+		# Function which starts threaded connections for topics
+			# Same IP, port listed in init message
+
+	def data_stream_thread(self, thread_name, port, pub, protocol):
+		# Create a socket object
+		soc = Sockets(self.server_ip, port, thread_name)
+		# Create a sensor_socket inside the socket object and bind it.
+		sensor_soc = soc.sensor_socket()
+
+		# Bind the socket
+		address = (self.server_ip, int(port))
+		sensor_soc.bind(address)
+
+		connected = False
+		print(thread_name + " thread started.\nConnecting... ")
+		cli, addr = soc.connect_sensor_socket()
+
+		print(thread_name + ' thread: Connection successful.')
+		connected = True
+
+		if thread_name == 'laser':
+			while connected:
+				msg, addr = sensor_soc.recvfrom(2048) # Endre størrelse på buffer?
+				msg = msg.decode('utf-8')	
+				laser_msg = self.serializer.laser_deserialize(msg)
+
+				pub.publish(laser_msg)
+
+		elif thread_name == 'odom':
+			while connected:
+				msg, addr = sensor_soc.recvfrom(2048) # Endre størrelse på buffer?
+
+				msg = msg.decode('utf-8')
+
+				odom_msg = self.serializer.odom_deserialize(msg)
+
+				pub.publish(odom_msg)
+
+		elif thread_name == 'something_else':
+			while connected:
+				data = cli.recvfrom(2048)
+				# Mer her
+
+	def robot_init(self, robot_info):
+		return -1
+
+
+	def mobile_init(self, robot_name):
+		for name in self.data_topics:
+			self.publisher_list.append()
+		# Disse burde være i en param liste eller bli mottatt av roboten.
+
+
+		command_topic_names = ['init_nav_pose', 'goal_nav_pose']
+		for i in range(len(self.command_ports)):
+			soc = Sockets(self.server_ip, int(self.command_ports[i]), command_topic_names[i])
+			cmd_soc = soc.command_socket()
+
+			# Bind the socket
+			address = (self.server_ip, int(self.command_ports[i]))
+			cmd_soc.bind(address)
+
+			cmd_connection, cmd_client_address = soc.connect_command_socket()
+			self.command_connection_list.append([cmd_soc, cmd_connection, cmd_client_address])
+
+		self.init_nav_pose_sub = self.create_subscription(PoseWithCovarianceStamped, robot_name + '/initialpose', self.init_nav_pose_callback, 10)
+		self.goal_nav_pose_sub = self.create_subscription(PoseStamped, robot_name + '/goal_pose', self.goal_nav_pose_callback, 10)
+
+		# TODO: Create threads for incoming data
+		# These has to be spesific to type of robot. Possibly create publishers when connections are made.
+		self.odom_pub = self.create_publisher(Odometry, robot_name + '/odom', 10)
+		self.laser_pub = self.create_publisher(LaserScan, robot_name + '/scan', 10)
+
+	def manipulator_init(self, robot_name):
+		# Skal nok være en publisher
+		self.joint_pos_sub = self.create_subscription(JointState, 'joint_states', self.joint_callback, 10)
+
+		# Skal nok være en subscriber
+		self.goal_manipulator_pose_pub = None # TODO
+		# TODO: Create threads for incoming data and posting to correct subs
+
+	def init_nav_pose_callback(self, msg):
+		serialized_msg = Serializer.pose_covar_stamped_serialize(msg)
+		self.command_connection_list[0,1].send(serialized_msg)
+
+	def goal_nav_pose_callback(self, msg):
+		serialized_msg = Serializer.pose_stamped_serialize(msg)
+		self.command_connection_list[1,1].send(serialized_msg)
+
+	def str_to_class(self, classname):
+		return getattr(sys.modules[__name__], classname)
 
 
 def main(argv=sys.argv[1:]):
-    # Get parameters from launch file
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-name', '--robot_name')
-    parser.add_argument('-type', '--robot_type')
-    parser.add_argument('-p', '--server_port')
-    args = parser.parse_args(remove_ros_args(args=argv))
+	# Get parameters from launch file
+	parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+	parser.add_argument('-name', '--robot_name')
+	parser.add_argument('-type', '--robot_type')
+	parser.add_argument('-p', '--server_port')
+	args = parser.parse_args(remove_ros_args(args=argv))
 
-    # Initialize rclpy and create node object
-    rclpy.init(args=argv)
-    server_node = ServerNode(args.robot_name,args.robot_type,args.server_port)
+	# Initialize rclpy and create node object
+	rclpy.init(args=argv)
+	server_node = ServerNode(args.robot_name,args.robot_type,args.server_port)
 
-    # Spin the node
-    rclpy.spin(server_node)
+	# Spin the node
+	rclpy.spin(server_node)
 
-    try:
-        server_node.destroy_node()
-        rclpy.shutdown()
-    except:
-        print('Error: ' + "rclpy shutdown failed")
+	try:
+		server_node.destroy_node()
+		rclpy.shutdown()
+	except:
+		print('Error: ' + "rclpy shutdown failed")
 
 
 if __name__ == '__main__':
-    main()
+	main()

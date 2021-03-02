@@ -8,8 +8,10 @@ client_node:
     command_msg_types: ['PoseWithCovarianceStamped', 'PoseStamped']
     command_ports: [12002, 12003]
     command_protocols: ['TCP', 'TCP']
+    command_qos: [10, 10]
 
     data_topics: ['scan', 'odom']
     data_msg_types: ['LaserScan', 'Odometry']
     data_ports: [12004, 12005]
     data_protocols: ['UDP', 'UDP']
+    data_qos: ['qos_profile_sensor_data', 'qos_profile_sensor_data']

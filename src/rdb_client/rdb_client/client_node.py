@@ -65,6 +65,8 @@ class ClientNode(Node):
         self.data_ports = self.get_parameter('data_ports').value
         self.declare_parameter('data_protocols')
         self.data_protocols = self.get_parameter('data_protocols').value
+        self.declare_parameter('data_qos')
+        self.data_qos = self.get_parameter('data_qos').value
 
         self.declare_parameter('command_topics')
         self.command_topics = self.get_parameter('command_topics').value
@@ -74,6 +76,8 @@ class ClientNode(Node):
         self.command_ports = self.get_parameter('command_ports').value
         self.declare_parameter('command_protocols')
         self.command_protocols = self.get_parameter('command_protocols').value
+        self.declare_parameter('command_qos')
+        self.command_qos = self.get_parameter('command_qos').value
 
         if not (len(self.data_topics) == len(self.data_ports) == len(self.data_protocols)):
             raise Exception('Data topics not matching amount of ports or protocols assigned. Shutting down.')
@@ -90,48 +94,56 @@ class ClientNode(Node):
         connection_response = None
 
         # Create initial message for setting up multiple sockets on the server
-        init_msg = 'init:'                                      # 0
-        + robot_name + ':'                                      # 1
-        + robot_type + ':'                                      # 2
+        init_msg = 'init:'+ str(robot_name) + ':'               # 0, 1
 
         for i in range(len(self.data_topics)):
             init_msg += str(self.data_topics[i]) + ';'
-        init_msg = init_msg[:-1]                                # 3
+        init_msg = init_msg[:-1]                                # 2
         init_msg += ':'
 
         for j in range(len(self.data_msg_types)):
             init_msg += str(self.data_msg_types[j]) + ';'
-        init_msg = init_msg[:-1]                                # 4
+        init_msg = init_msg[:-1]                                # 3
         init_msg += ':'    
 
         for k in range(len(self.data_ports)):
             init_msg += str(self.data_ports[k]) + ';'
-        init_msg = init_msg[:-1]                                # 5
+        init_msg = init_msg[:-1]                                # 4
         init_msg += ':'
 
         for l in range(len(self.data_protocols)):
             init_msg += str(self.data_protocols[l]) + ';'
+        init_msg = init_msg[:-1]                                # 5
+        init_msg += ':'
+
+        for m in range(len(self.data_qos)):
+            init_msg += str(self.data_qos[m]) + ';'
         init_msg = init_msg[:-1]                                # 6
         init_msg += ':'
 
-        for m in range(len(self.command_topics)):
-            init_msg += str(self.command_topics[m]) + ';'
+        for n in range(len(self.command_topics)):
+            init_msg += str(self.command_topics[n]) + ';'
         init_msg = init_msg[:-1]                                # 7
         init_msg += ':'
 
-        for n in range(len(self.command_msg_types)):
-            init_msg += str(self.command_msg_types[n]) + ';'
+        for o in range(len(self.command_msg_types)):
+            init_msg += str(self.command_msg_types[o]) + ';'
         init_msg = init_msg[:-1]                                # 8
         init_msg += ':'
 
-        for o in range(len(self.command_ports)):
-            init_msg += str(self.command_ports[o]) + ';'
+        for p in range(len(self.command_ports)):
+            init_msg += str(self.command_ports[p]) + ';'
         init_msg = init_msg[:-1]                                # 9
         init_msg += ':'
 
-        for p in range(len(self.command_protocols)):
-            init_msg += str(self.command_protocols[p]) + ';'
+        for q in range(len(self.command_protocols)):
+            init_msg += str(self.command_protocols[q]) + ';'
         init_msg = init_msg[:-1]                                # 10
+        init_msg += ':'
+
+        for r in range(len(self.command_qos)):
+            init_msg += str(self.command_qos[r]) + ';'
+        init_msg = init_msg[:-1]                                # 11
 
 
         # Create a TCP socket object and connect to server

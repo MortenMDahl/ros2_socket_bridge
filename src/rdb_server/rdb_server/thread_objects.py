@@ -14,12 +14,39 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from rdb_server.serializer import *
+import rclpy
+
 
 class BridgeObject:
-	def __init__(self, direction, name, msg_type, port, protocol):
+	def __init__(self, direction, name, msg_type, port, protocol, qos = 10):
 		self.direction = direction
 		self.name = name
 		self.msg_type = msg_type
 		self.port = port
-		self.publisher = publisher
 		self.protocol = protocol
+		self.qos = qos
+		self.serializer = Serialization
+
+		# Socket variables
+		self.soc = None
+		self.connected = False
+		self.connection = None
+		self.address = None
+		self.UDP_PROTOCOL = 'UDP'
+		self.TCP_PROTOCOL = 'TCP'
+		
+		# Publisher and subscriber variables
+		self.publisher = None
+		self.subscriber = None
+		
+	
+	def callback(self, data):
+		msg_deserialized = self.serializer.deserialize(str_to_class(self.msg_type), data)
+		if self.protocol == self.UDP_PROTOCOL:
+			self.soc.sendto(msg_deserialized.encode('utf-8'))
+		elif self.protocol == self.TCP_PROTOCOL:
+			self.connection.send(msg_deserialized.encode('utf-8'))
+
+	def str_to_class(self, classname):
+		return getattr(sys.modules[__name__], classname)

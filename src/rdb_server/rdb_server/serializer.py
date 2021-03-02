@@ -18,11 +18,14 @@
 import sys
 import os
 from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3, TransformStamped, PoseWithCovarianceStamped, PoseStamped
-from sensor_msgs.msg import LaserScan
+from sensor_msgs.msg import LaserScan, JointState
 from nav_msgs.msg import Odometry
 
 
 class Serialization:
+
+	
+
 
 	def serialize_header(data):
 		out = str(data.header.stamp.sec) + ';'
@@ -234,3 +237,19 @@ class Serialization:
 	def joint_pos_deserialize(data):
 		return -1
 		#TODO
+
+	def deserialize(msg_type, data):
+		if msg_type == LaserScan:
+			return laser_deserialize(data)
+
+		elif msg_type == Odometry:
+			return odom_deserialize(data)
+
+		elif msg_type == PoseWithCovarianceStamped:
+			return pose_covar_stamped_deserialize
+
+		elif msg_type == PoseStamped:
+			return pose_stamped_deserialize(data)
+
+		elif msg_type == JointState:
+			return joint_pos_deserialize(data)
