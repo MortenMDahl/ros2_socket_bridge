@@ -39,14 +39,13 @@ class BridgeObject:
 		# Publisher and subscriber variables
 		self.publisher = None
 		self.subscriber = None
-		
-	
-	def callback(self, data):
-		msg_deserialized = self.serializer.deserialize(str_to_class(self.msg_type), data)
-		if self.protocol == self.UDP_PROTOCOL:
-			self.soc.sendto(msg_deserialized.encode('utf-8'))
-		elif self.protocol == self.TCP_PROTOCOL:
-			self.connection.send(msg_deserialized.encode('utf-8'))
 
 	def str_to_class(self, classname):
 		return getattr(sys.modules[__name__], classname)
+	
+	def callback(self, data):
+		msg_deserialized = self.serializer.serialize(self.str_to_class(self.msg_type), data)
+		if self.protocol == self.UDP_PROTOCOL:
+			self.soc.sendto(msg_deserialized.encode('utf-8'), self.address)
+		elif self.protocol == self.TCP_PROTOCOL:
+			self.connection.send(msg_deserialized.encode('utf-8'))

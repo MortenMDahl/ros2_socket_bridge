@@ -25,11 +25,14 @@ from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3, Transform
 from rclpy.qos import qos_profile_sensor_data
 from rclpy.utilities import remove_ros_args
 import argparse
-from _thread import *
+
 import socket
+from _thread import *
+import threading
 
 import time
 from rdb_client.serializer import *
+from rdb_client.bridge_objects import *
 # from tcpSocket import TCPSocket
 #from udpSocket import UDPSocket
 
@@ -45,6 +48,15 @@ class ClientNode(Node):
         self.robot_name = str(robot_name)
         self.robot_type = str(robot_type)
         self.name = robot_name + '_client_node'
+
+        self.receive_objects = []
+        self.transmit_objects = []
+
+        self.UDP_PROTOCOL = 'UDP'
+        self.TCP_PROTOCOL = 'TCP'
+        self.DIRECTION_RECEIVE = 'receive'
+        self.DIRECTION_TRANSMIT = 'transmit'
+        self.BUFFER_SIZE = 4096
 
         connected = False
 
@@ -66,7 +78,9 @@ class ClientNode(Node):
         self.declare_parameter('data_protocols')
         self.data_protocols = self.get_parameter('data_protocols').value
         self.declare_parameter('data_qos')
-        self.data_qos = self.get_parameter('data_qos').value
+        self.data_qos = []
+        data_qos_temp = self.get_parameter('data_qos').value
+
 
         self.declare_parameter('command_topics')
         self.command_topics = self.get_parameter('command_topics').value
@@ -77,7 +91,9 @@ class ClientNode(Node):
         self.declare_parameter('command_protocols')
         self.command_protocols = self.get_parameter('command_protocols').value
         self.declare_parameter('command_qos')
-        self.command_qos = self.get_parameter('command_qos').value
+        self.command_qos = []
+        command_qos_temp = self.get_parameter('command_qos').value
+
 
         if not (len(self.data_topics) == len(self.data_ports) == len(self.data_protocols)):
             raise Exception('Data topics not matching amount of ports or protocols assigned. Shutting down.')
@@ -116,8 +132,8 @@ class ClientNode(Node):
         init_msg = init_msg[:-1]                                # 5
         init_msg += ':'
 
-        for m in range(len(self.data_qos)):
-            init_msg += str(self.data_qos[m]) + ';'
+        for m in range(len(data_qos_temp)):
+            init_msg += str(data_qos_temp[m]) + ';'
         init_msg = init_msg[:-1]                                # 6
         init_msg += ':'
 
@@ -141,14 +157,38 @@ class ClientNode(Node):
         init_msg = init_msg[:-1]                                # 10
         init_msg += ':'
 
-        for r in range(len(self.command_qos)):
-            init_msg += str(self.command_qos[r]) + ';'
+        for r in range(len(command_qos_temp)):
+            init_msg += str(command_qos_temp[r]) + ';'
         init_msg = init_msg[:-1]                                # 11
 
+        '''
+        Change the qos from being a string into being either integer or class
+        This is done after creating the init message, as not to confuse if an object is to be sent.
+        Objects must be sent as strings.
+        '''
+        for qos in data_qos_temp:
+                    try:
+                        self.data_qos.append(int(qos))
+                    except Exception:
+                        self.data_qos.append(self.str_to_class(qos))
+
+        for qos in command_qos_temp:
+                    try:
+                        self.command_qos.append(int(qos))
+                    except Exception:
+                        self.command_qos.append(self.str_to_class(qos))
+
+        # Creates bridge objects later to be used for receiving and sending messages.
+        for i in range(len(self.data_topics)):
+            self.transmit_objects.append(BridgeObject(self.DIRECTION_TRANSMIT, self.data_topics[i], self.data_msg_types[i], self.data_ports[i], self.data_protocols[i], self.data_qos[i]))
+
+        for j in range(len(self.command_topics)):
+            self.receive_objects.append(BridgeObject(self.DIRECTION_RECEIVE, self.command_topics[j], self.command_msg_types[j], self.command_ports[j], self.command_protocols[j], self.command_qos[j]))
 
         # Create a TCP socket object and connect to server
         self.clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.clientSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
+        self.clientSocket.settimeout(None)
         print('Connecting to server...')
         
         while not connected:
@@ -168,18 +208,58 @@ class ClientNode(Node):
         while connection_response != None:
             if connection_response == 'Matching init received.':
                 print('Matching init confirmed.')
-                if robot_type == 'mobile':
-                    self.mobile_init()
+                '''
+                Sleeping to ensure that the server readies the ports for communication
+                before attempting to connect.
+                '''
+                time.sleep(2)
+                print('Establishing connections...')
+                for obj in self.transmit_objects:
+                    obj.address = (self.server_ip, obj.port)
+                    if obj.protocol == self.UDP_PROTOCOL:
+                        try:
+                            obj.soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                            obj.soc.settimeout(15)
+                            obj.soc.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,1048576)
+                        except Exception as e:
+                            print("Error creating UDP socket for ", obj.name, ": ", e)
 
-                    # Create threads which takes incoming messages and publishes to correct topic
-                    # Create callback which serializes and sends messages
+                    elif obj.protocol == self.TCP_PROTOCOL:
+                        try:
+                            obj.soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                            obj.soc.settimeout(15)
+                            obj.soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
+                            obj.soc.connect((self.server_ip, obj.port))
+                        except Exception as e:
+                            print("Error connecting ", obj.name, " to requested address: ", e)
+                    # Creates a subscriber for each object with its appropriate callback function based on protocol.
+                    obj.subscriber = self.create_subscription(self.str_to_class(obj.msg_type), obj.name, obj.callback, obj.qos)
+                print('Transmission channels established!')
 
-                elif robot_type == 'manipulator':
-                    self.manipulator_init()
+                for obj in self.receive_objects:
+                    # Create publisher to correct topic
+                    obj.publisher = self.create_publisher(self.str_to_class(obj.msg_type), obj.name, obj.qos)
 
-                elif robot_type == 'multi':
-                    self.mobile_init()
-                    self.manipulator_init()
+                    if obj.protocol == self.UDP_PROTOCOL:
+                        try:
+                            obj.soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                            obj.soc.settimeout(15)
+                            obj.soc.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,1048576)
+                        except Exception as e:
+                            print("Error creating UDP socket for ", obj.name, ": ", e)
+                    elif obj.protocol == self.TCP_PROTOCOL:
+                        try:
+                            obj.soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                            obj.soc.settimeout(15)
+                            obj.soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
+                            obj.soc.connect((self.server_ip, obj.port))
+                        except Exception as e:
+                            print("Error connecting ", obj.name, " to requested address: ", e)
+
+                    # Creates thread for handling incoming messages.
+                    threading.Thread(target=self.receive_connection_thread, args = [obj]).start()
+                print('Receiving connections established!')
+
             else:
                 print(connection_response)
 
@@ -187,6 +267,38 @@ class ClientNode(Node):
 
             # Start sending to correct ports
         #do stuff with incoming based on topics
+
+    def receive_connection_thread(self, obj):
+        if obj.protocol == self.UDP_PROTOCOL:
+            while not obj.connected:
+                try:
+                    connection, client_address = obj.soc.recvfrom(self.BUFFER_SIZE)
+                    obj.connected = True
+                except Exception as e:
+                    print(self.name, "- Error while connecting: ", e)
+
+            print(str(obj.name) + " connected!")
+
+            while obj.connected:
+                data, addr = obj.soc.recvfrom(self.BUFFER_SIZE)
+                serialized_msg = data.decode('utf-8')
+
+                deserialized_msg = self.serializer.deserialize(self.str_to_class(obj.msg_type), serialized_msg)
+                obj.publisher.publish(data)
+
+
+        elif obj.protocol == self.TCP_PROTOCOL:
+            while not obj.connected:
+                obj.soc.connect((self.server_ip, obj.port))
+                obj.connected = True
+
+            while obj.connected:
+                try:
+                    data = obj.soc.recv(self.BUFFER_SIZE)
+                    msg = self.serializer.deserialize(self.str_to_class(obj.msg_type), data)
+                    obj.publisher.publish(msg)
+                except socket.timeout:
+                    continue
 
 
     def mobile_init(self):
@@ -239,6 +351,9 @@ class ClientNode(Node):
     def odom_callback(self, data):
         odom_serialized = self.serializer.serialize_odom(data)
         self.odom.sendto(odom_serialized.encode('utf-8'), (self.server_ip, self.data_ports[1]))
+
+    def str_to_class(self, classname):
+        return getattr(sys.modules[__name__], classname)
 
 
 def main(argv=sys.argv[1:]):

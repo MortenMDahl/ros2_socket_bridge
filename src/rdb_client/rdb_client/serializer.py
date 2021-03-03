@@ -18,12 +18,11 @@
 import sys
 import os
 from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3, TransformStamped, PoseWithCovarianceStamped, PoseStamped
-from sensor_msgs.msg import LaserScan
+from sensor_msgs.msg import LaserScan, JointState
 from nav_msgs.msg import Odometry
 
 
 class Serialization:
-
 	def serialize_header(data):
 		out = str(data.header.stamp.sec) + ';'
 		out += str(data.header.stamp.nanosec) + ';'
@@ -57,7 +56,7 @@ class Serialization:
 
 
 
-	def laser_deserialize(data):
+	def deserialize_laser(data):
 		lasermsg = LaserScan()
 		data = data.split(':')
 
@@ -76,10 +75,12 @@ class Serialization:
 		lasermsg.range_max = float(laserdata[6])
 
 		rangedata = data[2].split(';')
-		lasermsg.ranges = [float(rangevar) for rangevar in rangedata]
-		
-		intensitydata = data[3].split(';')
-		lasermsg.intensities = [float(intensity) for intensity in intensitydata]
+		lasermsg.ranges = [float(rangevar or 'inf') for rangevar in rangedata]
+		if len(data) > 3:
+			intensitydata = data[3].split(';')
+			lasermsg.intensities = [float(intensity or 'inf') for intensity in intensitydata]
+		else:
+			lasermsg.intensities = []
 
 		return lasermsg
 
@@ -112,7 +113,7 @@ class Serialization:
 
 
 
-	def odom_deserialize(data):
+	def deserialize_odom(data):
 		odommsg = Odometry()
 		data = data.split(':')
 
@@ -136,7 +137,7 @@ class Serialization:
 
 		covar_posedata = data[4].split(';')
 
-		odommsg.pose.covariance = [float(covar_data) for covar_data in covar_posedata]
+		odommsg.pose.covariance = [float(covar_data or 'inf') for covar_data in covar_posedata]
 
 		twistdata_linear = data[5].split(';')
 		odommsg.twist.twist.linear.x = float(twistdata_linear[0])
@@ -149,7 +150,7 @@ class Serialization:
 		odommsg.twist.twist.angular.z = float(twistdata_angular[2])
 
 		covar_twistdata = data[7].split(';')
-		odommsg.twist.covariance = [float(covar_data) for covar_data in covar_twistdata]
+		odommsg.twist.covariance = [float(covar_data or 'inf') for covar_data in covar_twistdata]
 		return odommsg
 
 	# For use in /initialpose
@@ -190,7 +191,7 @@ class Serialization:
 		posemsg.pose.pose.orientation.w = float(orientdata[3])
 
 		covar = data[4].split(';')
-		posemsg.pose.covariance = [float(covar_data) for covar_data in covar]
+		posemsg.pose.covariance = [float(covar_data or 'inf') for covar_data in covar]
 		return posemsg
 
 
@@ -201,7 +202,7 @@ class Serialization:
 
 		out += str(data.pose.pose.position.x) + ';' + str(data.pose.pose.position.y) + ';' + str(data.pose.pose.position.z) + ':'
 		out += str(data.pose.pose.orientation.x) + ';' + str(data.pose.pose.orientation.y) + ';' + str(data.pose.pose.orientation.z) + ';' + str(data.pose.pose.orientation.w)
-
+		return out
 	def pose_stamped_deserialize(data):
 		posemsg = PoseStamped()
 		data = data.split(';')
@@ -232,3 +233,35 @@ class Serialization:
 	def joint_pos_deserialize(data):
 		return -1
 		#TODO
+
+	def deserialize(msg_type, data):
+		if msg_type == LaserScan:
+			return Serialization.deserialize_laser(data)
+
+		elif msg_type == Odometry:
+			return Serialization.deserialize_odom(data)
+
+		elif msg_type == PoseWithCovarianceStamped:
+			return Serialization.pose_covar_stamped_deserialize(data)
+
+		elif msg_type == PoseStamped:
+			return Serialization.pose_stamped_deserialize(data)
+
+		elif msg_type == JointState:
+			return Serialization.joint_pos_deserialize(data)
+
+	def serialize(msg_type, data):
+		if msg_type == LaserScan:
+			return Serialization.serialize_laser(data)
+
+		elif msg_type == Odometry:
+			return Serialization.serialize_odom(data)
+
+		elif msg_type == PoseWithCovarianceStamped:
+			return Serialization.pose_covar_stamped_serialize(data)
+
+		elif msg_type == PoseStamped:
+			return Serialization.pose_stamped_serialize(data)
+
+		elif msg_type == JointState:
+			return Serialization.joint_pos_serialize(data)

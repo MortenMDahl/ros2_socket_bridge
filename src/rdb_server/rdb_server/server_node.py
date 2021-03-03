@@ -18,11 +18,11 @@
 import sys
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String, Header
-from nav_msgs.msg import Odometry
-from sensor_msgs.msg import LaserScan, JointState
-from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3, TransformStamped, PoseStamped, PoseWithCovariance, PoseWithCovarianceStamped
-from rclpy.qos import qos_profile_sensor_data
+from std_msgs.msg import *
+from nav_msgs.msg import *
+from sensor_msgs.msg import *
+from geometry_msgs.msg import *
+from rclpy.qos import *
 from rclpy.utilities import remove_ros_args
 import argparse
 import socket
@@ -32,7 +32,7 @@ import threading
 import time
 
 from rdb_server.serializer import *
-from rdb_server.thread_objects import *
+from rdb_server.bridge_objects import *
 from rdb_server.server_sockets import *
 
 # from tcpSocket import TCPSocket
@@ -59,7 +59,7 @@ class ServerNode(Node):
 
 		self.data_ports = []
 		self.command_ports = []
-		self.recieve_objects = []
+		self.receive_objects = []
 		self.transmit_objects = []
 		self.command_connection_list = []
 		self.publisher_list = []
@@ -67,7 +67,7 @@ class ServerNode(Node):
 
 		self.UDP_PROTOCOL = 'UDP'
 		self.TCP_PROTOCOL = 'TCP'
-		self.DIRECTION_RECIEVE = 'recieve'
+		self.DIRECTION_RECEIVE = 'receive'
 		self.DIRECTION_TRANSMIT = 'transmit'
 		self.BUFFER_SIZE = 4096
 
@@ -75,6 +75,7 @@ class ServerNode(Node):
 
 		self.serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
+
 
 		try:
 			self.serverSocket.bind((self.server_ip, self.server_port))
@@ -93,34 +94,39 @@ class ServerNode(Node):
 		msg = None
 
 		while rclpy.ok(): 
-			self.server, address = self.serverSocket.accept() # Waits incoming connection
-			print(self.name + ': Data received from ' + str(address[0]) + ':' + str(address[1]))
+			try:
 
-			while msg == None:
-				msg = self.server.recv(2048)
-				data = msg.decode('utf-8').split(':')
+				self.server, address = self.serverSocket.accept() # Waits incoming connection
+				print(self.name + ': Data received from ' + str(address[0]) + ':' + str(address[1]))
 
-			# Reset the msg for next cycle
-			msg = None
+				while msg == None:
+					msg = self.server.recv(2048)
+					data = msg.decode('utf-8').split(':')
 
-			# Handle the received message
-			self.server_msg_handler(data)
+				# Reset the msg for next cycle
+				msg = None
 
-	def recieve_connection_thread(self, obj):
+				# Handle the received message
+				self.server_msg_handler(data)
+			except socket.timeout:
+				continue
+
+	def receive_connection_thread(self, obj):
 		if obj.protocol == self.UDP_PROTOCOL:
 			while not obj.connected:
 				try:
 					connection, client_address = obj.soc.recvfrom(self.BUFFER_SIZE)
 					obj.connected = True
+				except socket.timeout:
+					continue
 				except Exception as e:
-					print(self.name, "- Error while connecting: ", e)
+					print(obj.name, "- Error while connecting: ", e)
 
 			print(str(obj.name) + " connected!")
 
 			while obj.connected:
 				data, addr = obj.soc.recvfrom(self.BUFFER_SIZE)
 				serialized_msg = data.decode('utf-8')
-
 				deserialized_msg = self.serializer.deserialize(self.str_to_class(obj.msg_type), serialized_msg)
 				obj.publisher.publish(deserialized_msg)
 
@@ -132,7 +138,8 @@ class ServerNode(Node):
 
 			while obj.connected:
 				data = obj.connection.recv(self.BUFFER_SIZE)
-				msg = self.serializer.deserialize(data)
+				data = data.decode('utf-8')
+				msg = self.serializer.deserialize(obj.msg_type, data)
 				obj.publisher.publish(msg)
 
 
@@ -167,8 +174,10 @@ class ServerNode(Node):
 
 				self.command_topics = list(data[7].split(';'))
 				self.command_msg_types = list(data[8].split(';'))
+
 				self.command_ports = list(data[9].split(';'))
 				self.command_ports = [int(port) for port in self.command_ports]
+
 				self.command_protocols = list(data[10].split(';'))
 				self.command_qos = []
 
@@ -181,17 +190,21 @@ class ServerNode(Node):
 						self.command_qos.append(self.str_to_class(qos))
 
 
-				# Takes the recieved data and assigns them to objects
+				# Takes the received data and assigns them to objects
 				for i in range(len(self.data_topics)):
-					self.recieve_objects.append(BridgeObject(self.DIRECTION_RECIEVE, self.data_topics[i], self.data_msg_types[i], self.data_ports[i], self.data_protocols[i], self.data_qos[i]))
+					self.receive_objects.append(BridgeObject(self.DIRECTION_RECEIVE, self.data_topics[i], self.data_msg_types[i], self.data_ports[i], self.data_protocols[i], self.data_qos[i]))
 
 				for j in range(len(self.command_topics)):
 					self.transmit_objects.append(BridgeObject(self.DIRECTION_TRANSMIT, self.command_topics[j], self.command_msg_types[j], self.command_ports[j], self.command_protocols[j], self.command_qos[j]))
 
-				# Prepairing recieve_objects to be used communication
-				for obj in self.recieve_objects:
-					# Fixes qos based on integer or string, turning it into a class if string is given.
-					obj.publisher = self.create_publisher(self.str_to_class(obj.msg_type), self.robot_name + '/' + obj.name, obj.qos)
+				# Prepairing receive_objects to be used for communication
+				# If the robot name is empty, create a publisher to the requested topic without robot namespace
+				for obj in self.receive_objects:
+					if self.robot_name != '':
+						obj.publisher = self.create_publisher(self.str_to_class(obj.msg_type), self.robot_name + '/' + obj.name, obj.qos)
+					else:
+						obj.publisher = self.create_publisher(self.str_to_class(obj.msg_type), obj.name, obj.qos)
+					
 
 					if obj.protocol == self.UDP_PROTOCOL:
 						# Creates an UDP socket
@@ -216,10 +229,31 @@ class ServerNode(Node):
 
 					# Creates thread for connecting the sockets and handling incoming data based on protocol.
 					# sende inn kun connection eller socket basert på TCP eller UDP?
-					threading.Thread(target=self.recieve_connection_thread, args = [obj]).start()
+					threading.Thread(target=self.receive_connection_thread, args = [obj]).start()
 
 				# Creating subscriptions with callback functions for transmit_objects.
 				for obj in self.transmit_objects:
+					if obj.protocol == self.UDP_PROTOCOL:
+						# Creates an UDP socket
+						try:
+							obj.soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+							obj.soc.settimeout(15)
+							obj.soc.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,1048576)
+							obj.soc.bind((self.server_ip, int(obj.port)))
+						except Exception as e:
+							print("Error binding ", obj.name, " to requested address: ", e)
+
+					elif obj.protocol == self.TCP_PROTOCOL:
+						# Creates a TCP socket
+						try:
+							obj.soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+							obj.soc.settimeout(15)
+							obj.soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
+							obj.soc.bind((self.server_ip, int(obj.port)))
+							obj.soc.listen(3)
+						except Exception as e:
+							print("Error binding ", obj.name, " to requested address: ", e)
+
 					obj.subscriber = self.create_subscription(self.str_to_class(obj.msg_type), obj.name, obj.callback, obj.qos)
 
 			else:
@@ -230,9 +264,6 @@ class ServerNode(Node):
 
 			print(str(data))
 
-		# Receive init message from robot
-		# Function which starts threaded connections for topics
-			# Same IP, port listed in init message
 
 	def data_stream_thread(self, thread_name, port, pub, protocol):
 		# Create a socket object
