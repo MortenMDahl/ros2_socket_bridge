@@ -48,4 +48,4 @@ class BridgeObject:
 		if self.protocol == self.UDP_PROTOCOL:
 			self.soc.sendto(msg_deserialized.encode('utf-8'), self.address)
 		elif self.protocol == self.TCP_PROTOCOL:
-			self.connection.send(msg_deserialized.encode('utf-8'))
+			self.soc.send(msg_deserialized.encode('utf-8'))

@@ -1,17 +1,62 @@
 client_node:
   ros__parameters:
 
+    # ---------------------------------------------------------------------------
+    # server_ip:
+    # IP of the computer where the server node is running.
+    # ---------------------------------------------------------------------------
+    # server_port:
+    # Port on the server computer which is to be used for the main communication
+    # between the server and client.
+    # ---------------------------------------------------------------------------
+
     server_ip: '127.0.0.1'
     server_port: 3000
 
-    command_topics: ['initialpose', 'goal_pose']
-    command_msg_types: ['PoseWithCovarianceStamped', 'PoseStamped']
-    command_ports: [12002, 12003]
-    command_protocols: ['TCP', 'TCP']
-    command_qos: [10, 10]
 
-    data_topics: ['scan', 'odom']
-    data_msg_types: ['LaserScan', 'Odometry']
-    data_ports: [12004, 12005]
-    data_protocols: ['UDP', 'UDP']
-    data_qos: ['qos_profile_sensor_data', 'qos_profile_sensor_data']
+    # ---------------------------------------------------------------------------
+    # *_topics:
+    # Topics to be received by client or sent to server.
+    # ---------------------------------------------------------------------------
+    # *_msg_types
+    # Message types from either std_msgs, nav_msgs, sensor_msgs or geometry_msgs
+    # which corresponds to the topic being received or transmitted
+
+    # Note: You can add more by importing them in server_node, client_node
+    # and serializer, and creating a serialize and deserialize function in
+    # serializer.py. You then have to add them to the main function serialize()
+    # an deserialize().
+    # ---------------------------------------------------------------------------
+    # *_ports
+    # Ports to be used on the server. These ports must be available.
+    # ---------------------------------------------------------------------------
+    # *_protocols
+    # Protocol to be used for sending or receiving data.
+    # Can be either 'TCP' or 'UDP'
+    # ---------------------------------------------------------------------------
+    # *_qos
+    # Quality of Service used in publisher or subscriber.
+    # Can be any integer or QoS documented in rclpy.qos
+    # ---------------------------------------------------------------------------
+
+
+    # ---------------------------------------------------------------------------
+    # receive_*
+    # Topics to be received on the client from the server.
+    # ---------------------------------------------------------------------------
+    # transmit_*
+    # Topics to be transmitted to the server from the client.
+    # ---------------------------------------------------------------------------
+
+
+    receive_topics: ['initialpose', 'goal_pose']
+    receive_msg_types: ['PoseWithCovarianceStamped', 'PoseStamped'] 
+    receive_ports: [12002, 12003]
+    receive_protocols: ['TCP', 'TCP']
+    receive_qos: [10, 10]
+
+    transmit_topics: ['scan', 'odom']
+    transmit_msg_types: ['LaserScan', 'Odometry']
+    transmit_ports: [12004, 12005]
+    transmit_protocols: ['UDP', 'UDP']
+    transmit_qos: ['qos_profile_sensor_data', 'qos_profile_sensor_data']

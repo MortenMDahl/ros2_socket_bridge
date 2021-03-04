@@ -29,7 +29,6 @@ import argparse
 def generate_launch_description(argv=sys.argv[1:]):
 
     robot_name = 'tester'
-    robot_type = 'mobile'
 
 
     param_dir = LaunchConfiguration(
@@ -51,7 +50,7 @@ def generate_launch_description(argv=sys.argv[1:]):
             name="client_node",
             output="screen",
             emulate_tty=True,
-            arguments=['-name', robot_name,'-type', robot_type],
+            arguments=['-name', robot_name],
             parameters=[param_dir]),
 
  ])

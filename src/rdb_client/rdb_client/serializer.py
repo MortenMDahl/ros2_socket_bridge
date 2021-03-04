@@ -17,10 +17,10 @@
 
 import sys
 import os
-from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3, TransformStamped, PoseWithCovarianceStamped, PoseStamped
-from sensor_msgs.msg import LaserScan, JointState
-from nav_msgs.msg import Odometry
-
+from std_msgs.msg import *
+from nav_msgs.msg import *
+from sensor_msgs.msg import *
+from geometry_msgs.msg import *
 
 class Serialization:
 	def serialize_header(data):
@@ -62,9 +62,8 @@ class Serialization:
 
 		headerdata = data[0].split(';')
 		lasermsg.header.stamp.sec = int(headerdata[0])
-		lasermsg.header.stamp.nanosec = int(headerdata[1])
+		lasermsg.header.stamp.nanosec = int(headerdata[1] or 0)
 		lasermsg.header.frame_id = headerdata[2]
-
 		laserdata = data[1].split(';')
 		lasermsg.angle_min = float(laserdata[0])
 		lasermsg.angle_max = float(laserdata[1])
@@ -119,7 +118,7 @@ class Serialization:
 
 		headerdata = data[0].split(';')
 		odommsg.header.stamp.sec = int(headerdata[0])
-		odommsg.header.stamp.nanosec = int(headerdata[1])
+		odommsg.header.stamp.nanosec = int(headerdata[1] or 0)
 		odommsg.header.frame_id = headerdata[2]
 
 		odommsg.child_frame_id = data[1]
@@ -154,7 +153,7 @@ class Serialization:
 		return odommsg
 
 	# For use in /initialpose
-	def pose_covar_stamped_serialize(data):
+	def serialize_pose_covar_stamped(data):
 		out = str(data.header.stamp.sec) + ';'
 		out += str(data.header.stamp.nanosec) + ';'
 		out += str(data.header.frame_id) + ':'
@@ -168,13 +167,13 @@ class Serialization:
 		out = out[:-1]
 		return out
 
-	def pose_covar_stamped_deserialize(data):
+	def deserialize_pose_covar_stamped(data):
 		posemsg = PoseWithCovarianceStamped()
 		data = data.split(':')
 
 		headerdata = data[0].split(';')
 		posemsg.header.stamp.sec = int(headerdata[0])
-		posemsg.header.stamp.nanosec = int(headerdata[1])
+		posemsg.header.stamp.nanosec = int(headerdata[1] or 0)
 		posemsg.header.frame_id = headerdata[2]
 
 		posemsg.child_frame_id = data[1]
@@ -197,19 +196,19 @@ class Serialization:
 
 
 
-	def pose_stamped_serialize(data):
+	def serialize_pose_stamped(data):
 		out = self.serialize_header(data)
 
 		out += str(data.pose.pose.position.x) + ';' + str(data.pose.pose.position.y) + ';' + str(data.pose.pose.position.z) + ':'
 		out += str(data.pose.pose.orientation.x) + ';' + str(data.pose.pose.orientation.y) + ';' + str(data.pose.pose.orientation.z) + ';' + str(data.pose.pose.orientation.w)
 		return out
-	def pose_stamped_deserialize(data):
+	def deserialize_pose_stamped(data):
 		posemsg = PoseStamped()
 		data = data.split(';')
 
 		headerdata = data[0].split(';')
 		posemsg.header.stamp.sec = int(headerdata[0])
-		posemsg.header.stamp.nanosec = int(headerdata[1])
+		posemsg.header.stamp.nanosec = int(headerdata[1] or 0)
 		posemsg.header.frame_id = headerdata[2]
 
 		posedata = data[1].split(';')
@@ -226,11 +225,11 @@ class Serialization:
 		return posemsg
 
 
-	def joint_pos_serialize(data):
+	def serialize_joint_pos(data):
 		return -1
 		#TODO
 
-	def joint_pos_deserialize(data):
+	def deserialize_joint_pos(data):
 		return -1
 		#TODO
 
@@ -242,13 +241,13 @@ class Serialization:
 			return Serialization.deserialize_odom(data)
 
 		elif msg_type == PoseWithCovarianceStamped:
-			return Serialization.pose_covar_stamped_deserialize(data)
+			return Serialization.deserialize_pose_covar_stamped(data)
 
 		elif msg_type == PoseStamped:
-			return Serialization.pose_stamped_deserialize(data)
+			return Serialization.deserialize_pose_stamped(data)
 
 		elif msg_type == JointState:
-			return Serialization.joint_pos_deserialize(data)
+			return Serialization.deserialize_joint_pos(data)
 
 	def serialize(msg_type, data):
 		if msg_type == LaserScan:
@@ -258,10 +257,10 @@ class Serialization:
 			return Serialization.serialize_odom(data)
 
 		elif msg_type == PoseWithCovarianceStamped:
-			return Serialization.pose_covar_stamped_serialize(data)
+			return Serialization.serialize_pose_covar_stamped(data)
 
 		elif msg_type == PoseStamped:
-			return Serialization.pose_stamped_serialize(data)
+			return Serialization.serialize_pose_stamped(data)
 
 		elif msg_type == JointState:
-			return Serialization.joint_pos_serialize(data)
+			return Serialization.serialize_joint_pos(data)
