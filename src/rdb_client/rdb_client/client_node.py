@@ -29,16 +29,10 @@ import argparse
 import socket
 from _thread import *
 import threading
-
 import time
+
 from rdb_client.serializer import *
 from rdb_client.bridge_objects import *
-# from tcpSocket import TCPSocket
-#from udpSocket import UDPSocket
-
-# ip_server = '127.0.0.1'
-# port = 3000 #spesific to robot. A server has to be started for each robot.
-
 
 
 
@@ -160,6 +154,7 @@ class ClientNode(Node):
             init_msg += str(receive_qos_temp[r]) + ';'
         init_msg = init_msg[:-1]                                # 11
 
+
         '''
         Change the qos from being a string into being either integer or class
         This is done after creating the init message, as not to confuse if an object is to be sent.
@@ -264,8 +259,6 @@ class ClientNode(Node):
 
             connection_response = None
 
-            # Start sending to correct ports
-        #do stuff with incoming based on topics
 
     def receive_connection_thread(self, obj):
         if obj.protocol == self.UDP_PROTOCOL:
