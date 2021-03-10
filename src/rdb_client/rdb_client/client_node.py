@@ -30,6 +30,7 @@ import socket
 from _thread import *
 import threading
 import time
+import pickle
 
 from rdb_client.serializer import *
 from rdb_client.bridge_objects import *
@@ -275,10 +276,11 @@ class ClientNode(Node):
 
             while obj.connected:
                 data, addr = obj.soc.recvfrom(self.BUFFER_SIZE)
-                serialized_msg = data.decode('utf-8')
+                msg = pickle.loads(data)
+                #serialized_msg = data.decode('utf-8')
 
-                deserialized_msg = self.serializer.deserialize(self.str_to_class(obj.msg_type), serialized_msg)
-                obj.publisher.publish(data)
+                #deserialized_msg = self.serializer.deserialize(self.str_to_class(obj.msg_type), serialized_msg)
+                obj.publisher.publish(msg)
 
 
         elif obj.protocol == self.TCP_PROTOCOL:
@@ -289,7 +291,8 @@ class ClientNode(Node):
             while obj.connected:
                 try:
                     data = obj.soc.recv(self.BUFFER_SIZE)
-                    msg = self.serializer.deserialize(self.str_to_class(obj.msg_type), data)
+                    msg = pickle.loads(data)
+                    #msg = self.serializer.deserialize(self.str_to_class(obj.msg_type), data)
                     obj.publisher.publish(msg)
                 except socket.timeout:
                     continue

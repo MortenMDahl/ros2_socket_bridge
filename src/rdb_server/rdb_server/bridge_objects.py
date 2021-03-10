@@ -16,6 +16,7 @@
 # limitations under the License.
 from rdb_server.serializer import *
 import rclpy
+import pickle
 
 
 class BridgeObject:
@@ -44,8 +45,9 @@ class BridgeObject:
 		return getattr(sys.modules[__name__], classname)
 	
 	def callback(self, data):
-		msg_deserialized = self.serializer.serialize(self.str_to_class(self.msg_type), data)
+		# msg_deserialized = self.serializer.serialize(self.str_to_class(self.msg_type), data)
+		serialized_msg = pickle.dumps(data)
 		if self.protocol == self.UDP_PROTOCOL:
-			self.soc.sendto(msg_deserialized.encode('utf-8'), self.address)
+			self.soc.sendto(serialized_msg, self.address)
 		elif self.protocol == self.TCP_PROTOCOL:
-			self.soc.send(msg_deserialized.encode('utf-8'))
+			self.soc.send(serialized_msg)
