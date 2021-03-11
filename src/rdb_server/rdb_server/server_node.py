@@ -35,7 +35,7 @@ import cryptography
 from cryptography.fernet import Fernet
 
 from rdb_server.bridge_objects import *
-from rdb_server.msg import * # Imports user-made message types.
+#from .rdb_server.msg import * # Imports user-made message types.
 
 
 class ServerNode(Node):
