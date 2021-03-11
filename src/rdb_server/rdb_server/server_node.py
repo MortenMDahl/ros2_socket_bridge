@@ -35,6 +35,7 @@ import cryptography
 from cryptography.fernet import Fernet
 
 from rdb_server.bridge_objects import *
+from rdb_server.msg import * # Imports user-made message types.
 
 
 class ServerNode(Node):
@@ -115,9 +116,6 @@ class ServerNode(Node):
 				self.server_msg_handler(transmit)
 			except socket.timeout:
 				continue
-
-	
-
 
 
 	def server_msg_handler(self, data):
@@ -204,7 +202,6 @@ class ServerNode(Node):
 							print("Error binding ", obj.name, " to requested address: ", e)
 
 					# Creates thread for connecting the sockets and handling incoming data based on protocol.
-					# sende inn kun connection eller socket basert på TCP eller UDP?
 					threading.Thread(target=self.receive_connection_thread, args = [obj]).start()
 
 				# Creating subscriptions with callback functions for transmit_objects.

@@ -37,7 +37,6 @@ def generate_launch_description(argv=sys.argv[1:]):
     # This can be generated using the generate_key.py script in the main folder.
     # Must match with clientside key.
     encryption_key = 'UQskrIAyKUoUhhEu5bRVxQTGyfGd6l8yTNLJg_BdsDQ='
-    #encryption_key = 'PjwM7vzZh6CumvImXdWJ1eQbAYhOdy80ms588qUSkK4='
 
 
 
