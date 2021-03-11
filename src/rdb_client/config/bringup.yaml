@@ -35,7 +35,7 @@ client_node:
     # Can be either 'TCP' or 'UDP'
     # ---------------------------------------------------------------------------
     # *_qos
-    # Quality of Service used in publisher or subscriber.
+    # Quality of Service setting used in publisher or subscriber.
     # Can be any integer or QoS documented in rclpy.qos
     # ---------------------------------------------------------------------------
 
@@ -50,7 +50,7 @@ client_node:
 
 
     receive_topics: ['initialpose', 'goal_pose']
-    receive_msg_types: ['PoseWithCovarianceStamped', 'PoseStamped'] 
+    receive_msg_types: ['PoseWithCovarianceStamped', 'PoseStamped']
     receive_ports: [12002, 12003]
     receive_protocols: ['TCP', 'TCP']
     receive_qos: [10, 10]

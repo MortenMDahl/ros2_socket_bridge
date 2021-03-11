@@ -14,20 +14,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from rdb_server.serializer import *
 import rclpy
 import pickle
-
+from cryptography.fernet import Fernet
 
 class BridgeObject:
-	def __init__(self, direction, name, msg_type, port, protocol, qos = 10):
+	def __init__(self, direction, encryption_key, name, msg_type, port, protocol, qos = 10):
 		self.direction = direction
 		self.name = name
 		self.msg_type = msg_type
 		self.port = port
 		self.protocol = protocol
 		self.qos = qos
-		self.serializer = Serialization
+		self.fernet = Fernet(encryption_key)
 
 		# Socket variables
 		self.soc = None
@@ -45,9 +44,9 @@ class BridgeObject:
 		return getattr(sys.modules[__name__], classname)
 	
 	def callback(self, data):
-		# msg_deserialized = self.serializer.serialize(self.str_to_class(self.msg_type), data)
 		serialized_msg = pickle.dumps(data)
+		msg_encrypted = self.fernet.encrypt(serialized_msg)
 		if self.protocol == self.UDP_PROTOCOL:
-			self.soc.sendto(serialized_msg, self.address)
+			self.soc.sendto(msg_encrypted, self.address)
 		elif self.protocol == self.TCP_PROTOCOL:
-			self.soc.send(serialized_msg)
+			self.soc.send(msg_encrypted)

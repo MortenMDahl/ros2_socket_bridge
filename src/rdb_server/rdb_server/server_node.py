@@ -25,30 +25,27 @@ from geometry_msgs.msg import *
 from rclpy.qos import *
 from rclpy.utilities import remove_ros_args
 import argparse
+
 import socket
 from _thread import *
 import threading
-
 import time
 import pickle
+import cryptography
+from cryptography.fernet import Fernet
 
-from rdb_server.serializer import *
 from rdb_server.bridge_objects import *
-from rdb_server.server_sockets import *
-
-# from tcpSocket import TCPSocket
-#from udpSocket import UDPSocket
-
-# ip_server = '127.0.0.1'
-# port = 3000 #spesific to robot. A server has to be started for each robot.
 
 
 class ServerNode(Node):
-	def __init__(self, robot_name, robot_type, server_port):
+	def __init__(self, robot_name, server_port, encryption_key):
 		super().__init__('server_node')
 		self.robot_name = str(robot_name)
 
+		self.fernet = Fernet(encryption_key)
+
 		self.name = self.robot_name + '_server_node'
+		self.key = encryption_key.encode('utf-8')
 
 		self.server_port = int(server_port or 0)
 
@@ -63,12 +60,12 @@ class ServerNode(Node):
 		self.transmit_objects = []
 		self.receive_connection_list = []
 		self.publisher_list = []
-		self.serializer = Serialization
 
 		self.UDP_PROTOCOL = 'UDP'
 		self.TCP_PROTOCOL = 'TCP'
 		self.DIRECTION_RECEIVE = 'receive'
 		self.DIRECTION_TRANSMIT = 'transmit'
+
 		'''
 		Quite a large buffer size (2^15), but it is required for redundancy.
 		If you get a serializing error, this is probably the cause. Too small of buffer size
@@ -77,7 +74,7 @@ class ServerNode(Node):
 
 		As an example, common LaserScan messages are around 7700 bytes when serialized.
 		'''
-		self.BUFFER_SIZE = 32768 # 
+		self.BUFFER_SIZE = 32768 
 
 		# Makes socket object and waits for connection
 
@@ -171,10 +168,10 @@ class ServerNode(Node):
 
 				# Takes the received transmit and assigns them to objects
 				for i in range(len(self.transmit_topics)):
-					self.receive_objects.append(BridgeObject(self.DIRECTION_RECEIVE, self.transmit_topics[i], self.transmit_msg_types[i], self.transmit_ports[i], self.transmit_protocols[i], self.transmit_qos[i]))
+					self.receive_objects.append(BridgeObject(self.DIRECTION_RECEIVE, self.key, self.transmit_topics[i], self.transmit_msg_types[i], self.transmit_ports[i], self.transmit_protocols[i], self.transmit_qos[i]))
 
 				for j in range(len(self.receive_topics)):
-					self.transmit_objects.append(BridgeObject(self.DIRECTION_TRANSMIT, self.receive_topics[j], self.receive_msg_types[j], self.receive_ports[j], self.receive_protocols[j], self.receive_qos[j]))
+					self.transmit_objects.append(BridgeObject(self.DIRECTION_TRANSMIT, self.key, self.receive_topics[j], self.receive_msg_types[j], self.receive_ports[j], self.receive_protocols[j], self.receive_qos[j]))
 
 				# Prepairing receive_objects to be used for communication
 				# If the robot name is empty, create a publisher to the requested topic without robot namespace
@@ -258,11 +255,16 @@ class ServerNode(Node):
 			print(str(obj.name) + " connected!")
 
 			while obj.connected:
-				data, addr = obj.soc.recvfrom(self.BUFFER_SIZE)
-				msg = pickle.loads(data)
-				#serialized_msg = data.decode('utf-8')
-				#deserialized_msg = self.serializer.deserialize(self.str_to_class(obj.msg_type), serialized_msg)
-				obj.publisher.publish(msg)
+				data_encrypted, addr = obj.soc.recvfrom(self.BUFFER_SIZE)
+				# Deserialize with pickle
+				try:
+					data = self.fernet.decrypt(data_encrypted)
+					msg = pickle.loads(data)
+					obj.publisher.publish(msg)
+				except cryptography.fernet.InvalidToken:
+					print('Received message with invalid tolken!')
+
+				
 
 
 		elif obj.protocol == self.TCP_PROTOCOL:
@@ -273,14 +275,16 @@ class ServerNode(Node):
 			print(str(obj.name) + " connected!")
 
 			while obj.connected:
-				data = obj.connection.recv(self.BUFFER_SIZE)
-				#data = data.decode('utf-8')
-				#msg = self.serializer.deserialize(self.str_to_class(obj.msg_type), data)
-				msg = pickle.loads(data)
-				if msg != None:
-					obj.publisher.publish(msg)
-				else:
-					continue
+				data_encrypted = obj.connection.recv(self.BUFFER_SIZE)
+				try:
+					data = self.fernet.decrypt(data_encrypted)
+					msg = pickle.loads(data)
+					if msg != None:
+						obj.publisher.publish(msg)
+					else:
+						continue
+				except cryptography.fernet.InvalidToken:
+					print('Received message with invalid tolken!')
 
 	# Converts sting to class.
 	# Only works if defined.
@@ -292,13 +296,13 @@ def main(argv=sys.argv[1:]):
 	# Get parameters from launch file
 	parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 	parser.add_argument('-name', '--robot_name')
-	parser.add_argument('-type', '--robot_type')
 	parser.add_argument('-p', '--server_port')
+	parser.add_argument('-key', '--encryption_key')
 	args = parser.parse_args(remove_ros_args(args=argv))
 
 	# Initialize rclpy and create node object
 	rclpy.init(args=argv)
-	server_node = ServerNode(args.robot_name,args.robot_type,args.server_port)
+	server_node = ServerNode(args.robot_name,args.server_port, args.encryption_key)
 
 	# Spin the node
 	rclpy.spin(server_node)

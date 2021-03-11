@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Copyright 2021 Morten Melby Dahl.
 # Copyright 2021 Norwegian University of Science and Technology.
 #
@@ -30,6 +32,11 @@ def generate_launch_description(argv=sys.argv[1:]):
 
     robot_name = 'tester'
 
+    # Any 32 url-safe base64-encoded bytes passed in as a string.
+    # This can be generated using the generate_key.py script in the main folder.
+    # Must match with serverside key.
+    
+    encryption_key = 'UQskrIAyKUoUhhEu5bRVxQTGyfGd6l8yTNLJg_BdsDQ='
 
     param_dir = LaunchConfiguration(
         'param_dir',
@@ -50,7 +57,6 @@ def generate_launch_description(argv=sys.argv[1:]):
             name="client_node",
             output="screen",
             emulate_tty=True,
-            arguments=['-name', robot_name],
+            arguments=['-name', robot_name, '-key', encryption_key],
             parameters=[param_dir]),
-
  ])
