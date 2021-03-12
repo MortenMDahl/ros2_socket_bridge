@@ -44,7 +44,10 @@ class ClientNode(Node):
 		self.robot_name = str(robot_name)
 		self.name = robot_name + '_client_node'
 
-		self.use_name = use_name
+		if use_name == 'true':
+			self.use_name = True
+		else:
+			self.use_name = False
 
 		self.fernet = Fernet(encryption_key)
 

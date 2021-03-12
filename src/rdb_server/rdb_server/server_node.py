@@ -43,7 +43,10 @@ class ServerNode(Node):
 		super().__init__('server_node')
 		self.robot_name = str(robot_name)
 
-		self.use_name = use_name
+		if use_name == 'true':
+			self.use_name = True
+		else:
+			self.use_name = False
 
 		self.fernet = Fernet(encryption_key)
 
@@ -176,7 +179,7 @@ class ServerNode(Node):
 				# Prepairing receive_objects to be used for communication
 				# If the robot name is empty, create a publisher to the requested topic without robot namespace
 				for obj in self.receive_objects:
-					if self.usename:
+					if self.use_name:
 						obj.publisher = self.create_publisher(self.str_to_class(obj.msg_type), self.robot_name + '/' + obj.name, obj.qos)
 					else:
 						obj.publisher = self.create_publisher(self.str_to_class(obj.msg_type), obj.name, obj.qos)
