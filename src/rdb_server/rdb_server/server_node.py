@@ -39,9 +39,11 @@ from rdb_server.bridge_objects import *
 
 
 class ServerNode(Node):
-	def __init__(self, robot_name, server_port, encryption_key):
+	def __init__(self, robot_name, server_port, encryption_key, use_name):
 		super().__init__('server_node')
 		self.robot_name = str(robot_name)
+
+		self.use_name = use_name
 
 		self.fernet = Fernet(encryption_key)
 
@@ -68,10 +70,10 @@ class ServerNode(Node):
 		self.DIRECTION_TRANSMIT = 'transmit'
 
 		'''
-		Quite a large buffer size (2^15), but it is required for redundancy.
+		Quite a large buffer size (2^15, 32K), but it is required for redundancy.
 		If you get a serializing error, this is probably the cause. Too small of buffer size
 		causes the message received to be uncomplete and the deserializer gets error converting
-		wrong types.
+		wrong types. This occurs when using TCP due to streaming of data. The buffer is sent if it gets filled up.
 
 		As an example, common LaserScan messages are around 7700 bytes when serialized.
 		'''
@@ -107,13 +109,13 @@ class ServerNode(Node):
 
 				while msg == None:
 					msg = self.server.recv(self.BUFFER_SIZE)
-					transmit = msg.decode('utf-8').split(':')
+					data = msg.decode('utf-8').split(':')
 
 				# Reset the msg for next cycle
 				msg = None
 
 				# Handle the received message
-				self.server_msg_handler(transmit)
+				self.server_msg_handler(data)
 			except socket.timeout:
 				continue
 
@@ -174,7 +176,7 @@ class ServerNode(Node):
 				# Prepairing receive_objects to be used for communication
 				# If the robot name is empty, create a publisher to the requested topic without robot namespace
 				for obj in self.receive_objects:
-					if self.robot_name != '':
+					if self.usename:
 						obj.publisher = self.create_publisher(self.str_to_class(obj.msg_type), self.robot_name + '/' + obj.name, obj.qos)
 					else:
 						obj.publisher = self.create_publisher(self.str_to_class(obj.msg_type), obj.name, obj.qos)
@@ -253,12 +255,13 @@ class ServerNode(Node):
 
 			while obj.connected:
 				data_encrypted, addr = obj.soc.recvfrom(self.BUFFER_SIZE)
-				# Deserialize with pickle
+				# Decrypt with Fernet and deserialize with pickle 
 				try:
 					data = self.fernet.decrypt(data_encrypted)
 					msg = pickle.loads(data)
 					obj.publisher.publish(msg)
 				except cryptography.fernet.InvalidToken:
+					# Invalid tolken is the same as not equal encryption key.
 					print('Received message with invalid tolken!')
 
 				
@@ -283,8 +286,9 @@ class ServerNode(Node):
 				except cryptography.fernet.InvalidToken:
 					print('Received message with invalid tolken!')
 
+
 	# Converts sting to class.
-	# Only works if defined.
+	# Only works if defined. Remember to import your own custom message types if used.
 	def str_to_class(self, classname):
 		return getattr(sys.modules[__name__], classname)
 
@@ -295,11 +299,12 @@ def main(argv=sys.argv[1:]):
 	parser.add_argument('-name', '--robot_name')
 	parser.add_argument('-p', '--server_port')
 	parser.add_argument('-key', '--encryption_key')
+	parser.add_argument('-usename', '--use_name')
 	args = parser.parse_args(remove_ros_args(args=argv))
 
 	# Initialize rclpy and create node object
 	rclpy.init(args=argv)
-	server_node = ServerNode(args.robot_name,args.server_port, args.encryption_key)
+	server_node = ServerNode(args.robot_name,args.server_port, args.encryption_key, args.use_name)
 
 	# Spin the node
 	rclpy.spin(server_node)

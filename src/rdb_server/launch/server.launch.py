@@ -33,6 +33,9 @@ def generate_launch_description(argv=sys.argv[1:]):
     robot_name = 'tester'
     server_port = '3000'
 
+    # Whether or not to use robot name as a prefix for published topics
+    use_name = True
+
     # Any 32 url-safe base64-encoded bytes object passed in as a string.
     # This can be generated using the generate_key.py script in the main folder.
     # Must match with clientside key.
@@ -59,6 +62,6 @@ def generate_launch_description(argv=sys.argv[1:]):
             name="server_node",
             output="screen",
             emulate_tty=True,
-            arguments=['-name', robot_name, '-p', server_port, '-key', encryption_key],
+            arguments=['-name', robot_name, '-p', server_port, '-key', encryption_key, '-usename', use_name],
             parameters=[param_dir]),
  ])

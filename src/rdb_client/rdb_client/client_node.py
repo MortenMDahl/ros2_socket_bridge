@@ -39,10 +39,12 @@ from rdb_client.bridge_objects import *
 
 
 class ClientNode(Node):
-	def __init__(self, robot_name, encryption_key):
+	def __init__(self, robot_name, encryption_key, use_name):
 		super().__init__('client_node')
 		self.robot_name = str(robot_name)
 		self.name = robot_name + '_client_node'
+
+		self.use_name = use_name
 
 		self.fernet = Fernet(encryption_key)
 
@@ -235,7 +237,11 @@ class ClientNode(Node):
 
 				for obj in self.receive_objects:
 					# Create publisher to correct topic
-					obj.publisher = self.create_publisher(self.str_to_class(obj.msg_type), obj.name, obj.qos)
+					if self.use_name:
+						obj.publisher = self.create_publisher(self.str_to_class(obj.msg_type), self.robot_name + '/' + obj.name, obj.qos)
+					else:
+						obj.publisher = self.create_publisher(self.str_to_class(obj.msg_type), obj.name, obj.qos)
+					
 
 					if obj.protocol == self.UDP_PROTOCOL:
 						try:
@@ -311,11 +317,12 @@ def main(argv=sys.argv[1:]):
 	parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 	parser.add_argument('-name', '--robot_name')
 	parser.add_argument('-key', '--encryption_key')
+	parser.add_argument('-usename', '--use_name')
 	args = parser.parse_args(remove_ros_args(args=argv))
 
 	# Initialize rclpy and create node object
 	rclpy.init(args=argv)
-	client_node = ClientNode(args.robot_name, args.encryption_key)
+	client_node = ClientNode(args.robot_name, args.encryption_key, args.use_name)
 
 	# Spin the node
 	rclpy.spin(client_node)
