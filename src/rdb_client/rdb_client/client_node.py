@@ -44,13 +44,12 @@ class ClientNode(Node):
 		self.robot_name = str(robot_name)
 		self.name = robot_name + '_client_node'
 
-		if use_name == 'true':
+		if lower(use_name) == 'true':
 			self.use_name = True
 		else:
 			self.use_name = False
 
 		self.fernet = Fernet(encryption_key)
-
 		self.key = encryption_key
 
 		self.receive_objects = []
@@ -96,6 +95,7 @@ class ClientNode(Node):
 		receive_qos_temp = self.get_parameter('receive_qos').value
 
 
+		# Checks to see if the user has given the right amount of settings.
 		if not (len(self.transmit_topics) == len(self.transmit_ports) == len(self.transmit_protocols)):
 			raise Exception('transmit topics not matching amount of ports or protocols assigned. Shutting down.')
 			rclpy.shutdown()
@@ -164,9 +164,8 @@ class ClientNode(Node):
 
 
 		'''
-		Change the qos from being a string into being either integer or class
-		This is done after creating the init message, as not to confuse if an object is to be sent.
-		Objects must be sent as strings.
+		Change the qos from being a string into being either integer or class.
+		The str_to_class converts any string to a class, if the class is defined.
 		'''
 		for qos in transmit_qos_temp:
 					try:

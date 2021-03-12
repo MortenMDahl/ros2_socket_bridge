@@ -37,7 +37,6 @@ from cryptography.fernet import Fernet
 from rdb_server.bridge_objects import *
 #from .rdb_server.msg import * # Imports user-made message types.
 
-
 class ServerNode(Node):
 	def __init__(self, robot_name, server_port, encryption_key, use_name):
 		super().__init__('server_node')
@@ -233,7 +232,6 @@ class ServerNode(Node):
 							print("Error binding ", obj.name, " to requested address: ", e)
 
 					obj.subscriber = self.create_subscription(self.str_to_class(obj.msg_type), obj.name, obj.callback, obj.qos)
-
 			else:
 				print('Error: robot_name does not match with client.')
 		else:

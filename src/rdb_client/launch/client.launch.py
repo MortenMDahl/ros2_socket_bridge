@@ -30,15 +30,15 @@ import argparse
 
 def generate_launch_description(argv=sys.argv[1:]):
 
-    robot_name = 'tester'
+    # Can be anything to fit your desired method of naming. Must match with server.
+    robot_name = 'fleet1/robot2'
 
     # Whether or not to use robot name as a prefix for incoming topics
-    use_name = 'true'
+    use_name = 'false'
 
     # Any 32 url-safe base64-encoded bytes passed in as a string.
     # This can be generated using the generate_key.py script in the main folder.
-    # Must match with serverside key.
-    
+    # Must match with server key.
     encryption_key = 'UQskrIAyKUoUhhEu5bRVxQTGyfGd6l8yTNLJg_BdsDQ='
 
     param_dir = LaunchConfiguration(
