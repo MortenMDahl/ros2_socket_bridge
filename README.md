@@ -1,6 +1,6 @@
 # ros2_domain_bridge
 
-**README still under development.**
+**README and the project is still under development. Any feedback is appreciated! Contact me at mortemd@stud.ntnu.no.**
 
 The ros2_domain_bridge package is made to enable communication across different domains set with 
 
@@ -14,7 +14,6 @@ Install from source as with any other ROS2 package - download and run ```colcon 
 * Python 3.6+
 * ROS2 'Foxy Fitzroy'
 * 'Cryptography' Python package (pip install cryptography)
-* 'Pickle' Python package
 
 
 ## Usage
