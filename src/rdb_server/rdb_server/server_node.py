@@ -42,7 +42,7 @@ class ServerNode(Node):
 		super().__init__('server_node')
 		self.robot_name = str(robot_name)
 
-		if use_name == 'true':
+		if use_name.lower() == 'true':
 			self.use_name = True
 		else:
 			self.use_name = False

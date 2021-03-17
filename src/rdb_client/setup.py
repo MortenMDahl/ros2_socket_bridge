@@ -20,7 +20,7 @@ setup(
     maintainer='kmriiwa',
     maintainer_email='mortenmdahl@outlook.com',
     description='TODO: Package description',
-    license='Apache License 2.0<',
+    license='Apache License 2.0',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
