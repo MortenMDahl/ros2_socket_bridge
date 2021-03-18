@@ -22,6 +22,7 @@ from std_msgs.msg import *
 from nav_msgs.msg import *
 from sensor_msgs.msg import *
 from geometry_msgs.msg import *
+from visualization_msgs.msg import *
 from rclpy.qos import *
 from rclpy.utilities import remove_ros_args
 import argparse
@@ -29,6 +30,7 @@ import argparse
 import socket
 from _thread import *
 import threading
+import multiprocessing
 import time
 import pickle
 import cryptography
@@ -59,7 +61,7 @@ class ClientNode(Node):
 		self.TCP_PROTOCOL = 'TCP'
 		self.DIRECTION_RECEIVE = 'receive'
 		self.DIRECTION_TRANSMIT = 'transmit'
-		self.BUFFER_SIZE = 4096
+		self.BUFFER_SIZE = 32768
 
 		connected = False
 
@@ -209,19 +211,17 @@ class ClientNode(Node):
 		while connection_response != None:
 			if connection_response == 'Matching init received.':
 				print('Matching init confirmed.')
-				'''
-				Sleeping to ensure that the server readies the ports for communication
-				before attempting to connect.
-				'''
+				# Sleeping to ensure that the server readies the ports for communication
+				# before attempting to connect.
 				time.sleep(2)
 				print('Establishing connections...')
 				for obj in self.transmit_objects:
-					obj.address = (self.server_ip, obj.port)
+					obj.address = (self.server_ip, int(obj.port))
 					if obj.protocol == self.UDP_PROTOCOL:
 						try:
 							obj.soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 							obj.soc.settimeout(15)
-							obj.soc.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,1048576) # Øke buffer størrelse?
+							obj.soc.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,1048576) # Øke buffer størrelse?							
 						except Exception as e:
 							print("Error creating UDP socket for ", obj.name, ": ", e)
 
@@ -230,7 +230,8 @@ class ClientNode(Node):
 							obj.soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 							obj.soc.settimeout(15)
 							obj.soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
-							obj.soc.connect((self.server_ip, obj.port))
+							obj.soc.connect(obj.address)
+							#time.sleep(0.5)
 						except Exception as e:
 							print("Error connecting ", obj.name, " to requested address: ", e)
 					# Creates a subscriber for each object with its appropriate callback function based on protocol.
@@ -250,6 +251,18 @@ class ClientNode(Node):
 							obj.soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 							obj.soc.settimeout(15)
 							obj.soc.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,1048576)
+
+							obj.soc.sendto(b'initialize_channel', (self.server_ip, int(obj.port)))
+
+							print(obj.name + " receiving")
+							temp, addr = obj.soc.recvfrom(self.BUFFER_SIZE)
+
+							time.sleep(1) # Not to surpass server
+
+							if temp == b'confirm_connection':
+									obj.connected = True
+
+							#connection_process.terminate()
 						except Exception as e:
 							print("Error creating UDP socket for ", obj.name, ": ", e)
 					elif obj.protocol == self.TCP_PROTOCOL:
@@ -258,6 +271,7 @@ class ClientNode(Node):
 							obj.soc.settimeout(15)
 							obj.soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
 							obj.soc.connect((self.server_ip, obj.port))
+							time.sleep(0.5)
 						except Exception as e:
 							print("Error connecting ", obj.name, " to requested address: ", e)
 
@@ -272,10 +286,13 @@ class ClientNode(Node):
 
 
 	def receive_connection_thread(self, obj):
+		#i = 0
 		if obj.protocol == self.UDP_PROTOCOL:
 			while not obj.connected:
 				try:
-					connection, client_address = obj.soc.recvfrom(self.BUFFER_SIZE)
+					time.sleep(1)
+					obj.soc.sendto(b'initialize_channel', (self.server_ip, int(obj.port)))
+					temp, client_address = obj.soc.recvfrom(self.BUFFER_SIZE)
 					obj.connected = True
 				except socket.timeout:
 					continue
@@ -285,13 +302,24 @@ class ClientNode(Node):
 			print(str(obj.name) + " connected!")
 
 			while obj.connected:
-				data_encrypted, addr = obj.soc.recvfrom(self.BUFFER_SIZE)
+				try:
+					data_encrypted, addr = obj.soc.recvfrom(self.BUFFER_SIZE)
+				except socket.timeout:
+					print("No data received from", obj.name)
+					continue
 				try:
 					data = self.fernet.decrypt(data_encrypted)
 					msg = pickle.loads(data)
 					obj.publisher.publish(msg)
 				except cryptography.fernet.InvalidToken:
-					print('Received message with invalid tolken!')
+					continue
+				#	print('Received message with invalid tolken!')
+					#i += 1
+				#	if i >= 3:
+				#		print('Received too many invalid tolkens. Shutting down.')
+				#		rclpy.shutdown()
+				except socket.timeout:
+					continue
 
 
 		elif obj.protocol == self.TCP_PROTOCOL:
@@ -309,6 +337,11 @@ class ClientNode(Node):
 					continue
 				except cryptography.fernet.InvalidToken:
 					print('Received message with invalid tolken!')
+					i += 1
+					if i >= 3:
+						print('Received too many invalid tolkens. Shutting down.')
+						rclpy.shutdown()
+
 
 	def str_to_class(self, classname):
 		return getattr(sys.modules[__name__], classname)

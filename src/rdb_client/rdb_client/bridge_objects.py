@@ -44,6 +44,7 @@ class BridgeObject:
 		return getattr(sys.modules[__name__], classname)
 	
 	def callback(self, data):
+		print("Callback!")
 		serialized_msg = pickle.dumps(data)
 		msg_encrypted = self.fernet.encrypt(serialized_msg)
 		if self.protocol == self.UDP_PROTOCOL:

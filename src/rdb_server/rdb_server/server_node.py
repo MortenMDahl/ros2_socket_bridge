@@ -22,6 +22,7 @@ from std_msgs.msg import *
 from nav_msgs.msg import *
 from sensor_msgs.msg import *
 from geometry_msgs.msg import *
+from visualization_msgs.msg import *
 from rclpy.qos import *
 from rclpy.utilities import remove_ros_args
 import argparse
@@ -65,11 +66,14 @@ class ServerNode(Node):
 		self.transmit_objects = []
 		self.receive_connection_list = []
 		self.publisher_list = []
+		self.subscriber_list = []
 
 		self.UDP_PROTOCOL = 'UDP'
 		self.TCP_PROTOCOL = 'TCP'
 		self.DIRECTION_RECEIVE = 'receive'
 		self.DIRECTION_TRANSMIT = 'transmit'
+
+
 
 		'''
 		Quite a large buffer size (2^15, 32K), but it is required for redundancy.
@@ -99,6 +103,8 @@ class ServerNode(Node):
 		# Start thread which accept incoming connections
 		# and handles received messages
 		threading.Thread(target=self.server_handler).start()
+		time.sleep(10)
+		self.subscriber = self.create_subscription(LaserScan, "scan", self.transmit_objects[0].callback, self.transmit_objects[0].qos)
 
 	def server_handler(self):
 		msg = None
@@ -107,7 +113,7 @@ class ServerNode(Node):
 			try:
 
 				self.server, address = self.serverSocket.accept() # Waits incoming connection
-				print(self.name + ': transmit received from ' + str(address[0]) + ':' + str(address[1]))
+				print(self.name + ': data received from ' + str(address[0]) + ':' + str(address[1]))
 
 				while msg == None:
 					msg = self.server.recv(self.BUFFER_SIZE)
@@ -217,6 +223,13 @@ class ServerNode(Node):
 							obj.soc.settimeout(15)
 							obj.soc.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,1048576)
 							obj.soc.bind((self.server_ip, int(obj.port)))
+							print(obj.name + " establishing connection...")
+							temp, obj.address = obj.soc.recvfrom(self.BUFFER_SIZE)
+							if temp == b'initialize_channel':
+								print(obj.name + ' sending init')
+								obj.soc.sendto(b'confirm_connection', obj.address)
+								print(obj.name + " connected!")
+							time.sleep(0.5)
 						except Exception as e:
 							print("Error binding ", obj.name, " to requested address: ", e)
 
@@ -228,10 +241,15 @@ class ServerNode(Node):
 							obj.soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
 							obj.soc.bind((self.server_ip, int(obj.port)))
 							obj.soc.listen(3)
+							obj.connection, obj.address = obj.soc.accept()
+							time.sleep(0.5)
 						except Exception as e:
 							print("Error binding ", obj.name, " to requested address: ", e)
 
 					obj.subscriber = self.create_subscription(self.str_to_class(obj.msg_type), obj.name, obj.callback, obj.qos)
+					#self.subscriber_list.append(obj.subscriber)
+					# Hvorfor vil ikke subscriber kjøre callback? Det funker i client...
+					print(obj.name + " subscription started!")
 			else:
 				print('Error: robot_name does not match with client.')
 		else:
@@ -240,13 +258,14 @@ class ServerNode(Node):
 
 			print(str(data))
 
-
 	def receive_connection_thread(self, obj):
+		i = 0
 		if obj.protocol == self.UDP_PROTOCOL:
 			while not obj.connected:
 				try:
-					connection, client_address = obj.soc.recvfrom(self.BUFFER_SIZE)
-					obj.connected = True
+					connection, obj.address = obj.soc.recvfrom(self.BUFFER_SIZE)
+					if connection == b'initialize_channel':
+						obj.connected = True
 				except socket.timeout:
 					continue
 				except Exception as e:
@@ -264,8 +283,12 @@ class ServerNode(Node):
 				except cryptography.fernet.InvalidToken:
 					# Invalid tolken is the same as not equal encryption key.
 					print('Received message with invalid tolken!')
-
-				
+					i += 1
+					if i >= 3:
+						print('Received too many invalid tolkens. Shutting down.')
+						rclpy.shutdown()
+				except socket.timeout:
+					continue
 
 
 		elif obj.protocol == self.TCP_PROTOCOL:
@@ -286,12 +309,19 @@ class ServerNode(Node):
 						continue
 				except cryptography.fernet.InvalidToken:
 					print('Received message with invalid tolken!')
+					i += 1
+					if i >= 3:
+						print('Received too many invalid tolkens. Shutting down.')
+						rclpy.shutdown()
 
 
 	# Converts sting to class.
 	# Only works if defined. Remember to import your own custom message types if used.
 	def str_to_class(self, classname):
 		return getattr(sys.modules[__name__], classname)
+
+
+
 
 
 def main(argv=sys.argv[1:]):

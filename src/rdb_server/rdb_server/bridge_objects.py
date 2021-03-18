@@ -49,4 +49,4 @@ class BridgeObject:
 		if self.protocol == self.UDP_PROTOCOL:
 			self.soc.sendto(msg_encrypted, self.address)
 		elif self.protocol == self.TCP_PROTOCOL:
-			self.soc.send(msg_encrypted)
+			self.connection.send(msg_encrypted)
