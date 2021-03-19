@@ -252,15 +252,15 @@ class ClientNode(Node):
 							obj.soc.settimeout(15)
 							obj.soc.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,1048576)
 
-							obj.soc.sendto(b'initialize_channel', (self.server_ip, int(obj.port)))
+							#obj.soc.sendto(b'initialize_channel', (self.server_ip, int(obj.port)))
 
-							print(obj.name + " receiving")
-							temp, addr = obj.soc.recvfrom(self.BUFFER_SIZE)
+							#print(obj.name + " receiving")
+							#temp, addr = obj.soc.recvfrom(self.BUFFER_SIZE)
 
-							time.sleep(1) # Not to surpass server
+							#time.sleep(1) # Not to surpass server
 
-							if temp == b'confirm_connection':
-									obj.connected = True
+							#if temp == b'confirm_connection':
+							#		obj.connected = True
 
 							#connection_process.terminate()
 						except Exception as e:
@@ -277,6 +277,7 @@ class ClientNode(Node):
 
 					# Creates thread for handling incoming messages.
 					threading.Thread(target=self.receive_connection_thread, args = [obj]).start()
+					time.sleep(1)
 				print('Receiving connections established!')
 
 			else:
@@ -288,11 +289,15 @@ class ClientNode(Node):
 	def receive_connection_thread(self, obj):
 		#i = 0
 		if obj.protocol == self.UDP_PROTOCOL:
+			print('Is obj connected before connecting? ', obj.connected)
 			while not obj.connected:
 				try:
-					time.sleep(1)
+					#time.sleep(1)
+					print(obj.name,' sending init')
 					obj.soc.sendto(b'initialize_channel', (self.server_ip, int(obj.port)))
+					time.sleep(1)
 					temp, client_address = obj.soc.recvfrom(self.BUFFER_SIZE)
+					print(temp)
 					obj.connected = True
 				except socket.timeout:
 					continue
@@ -312,6 +317,7 @@ class ClientNode(Node):
 					msg = pickle.loads(data)
 					obj.publisher.publish(msg)
 				except cryptography.fernet.InvalidToken:
+					print(data_encrypted)
 					continue
 				#	print('Received message with invalid tolken!')
 					#i += 1

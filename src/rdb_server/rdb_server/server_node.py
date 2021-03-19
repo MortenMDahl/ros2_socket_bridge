@@ -23,6 +23,7 @@ from nav_msgs.msg import *
 from sensor_msgs.msg import *
 from geometry_msgs.msg import *
 from visualization_msgs.msg import *
+from rcl_interfaces.msg import Log, ParameterEvent
 from rclpy.qos import *
 from rclpy.utilities import remove_ros_args
 import argparse
@@ -73,6 +74,8 @@ class ServerNode(Node):
 		self.DIRECTION_RECEIVE = 'receive'
 		self.DIRECTION_TRANSMIT = 'transmit'
 
+		self.INIT_COMPLETE = False
+
 
 
 		'''
@@ -100,11 +103,21 @@ class ServerNode(Node):
 		print(str(self.name) + ' waiting for connection at port ' + str(self.server_port) + '...')
 		self.serverSocket.listen(5) # Enables the server to accept connections
 
+		# Shutdown handler
+		self.shutdown_subscriber = self.create_subscription(String, "shutdown", self.shutdown, qos_profile_sensor_data)
+
 		# Start thread which accept incoming connections
 		# and handles received messages
 		threading.Thread(target=self.server_handler).start()
-		time.sleep(10)
-		self.subscriber = self.create_subscription(LaserScan, "scan", self.transmit_objects[0].callback, self.transmit_objects[0].qos)
+
+		self.shutdown_publisher = self.create_publisher(String, "shutdown", qos_profile_sensor_data)
+
+		# Wait for initialization to complete.
+		while (not self.INIT_COMPLETE):
+			continue
+
+		# For some magical reason, this is required to initialize subscribers.
+		self.shutdown_publisher.publish(String(data=""))
 
 	def server_handler(self):
 		msg = None
@@ -225,6 +238,7 @@ class ServerNode(Node):
 							obj.soc.bind((self.server_ip, int(obj.port)))
 							print(obj.name + " establishing connection...")
 							temp, obj.address = obj.soc.recvfrom(self.BUFFER_SIZE)
+							print(obj.name, temp, obj.address)
 							if temp == b'initialize_channel':
 								print(obj.name + ' sending init')
 								obj.soc.sendto(b'confirm_connection', obj.address)
@@ -245,11 +259,11 @@ class ServerNode(Node):
 							time.sleep(0.5)
 						except Exception as e:
 							print("Error binding ", obj.name, " to requested address: ", e)
-
+					print(obj.address)
 					obj.subscriber = self.create_subscription(self.str_to_class(obj.msg_type), obj.name, obj.callback, obj.qos)
-					#self.subscriber_list.append(obj.subscriber)
-					# Hvorfor vil ikke subscriber kjøre callback? Det funker i client...
 					print(obj.name + " subscription started!")
+
+				self.INIT_COMPLETE = True
 			else:
 				print('Error: robot_name does not match with client.')
 		else:
@@ -257,6 +271,17 @@ class ServerNode(Node):
 			# "Disconnect" message?
 
 			print(str(data))
+
+	def shutdown(self, data):
+		if data.data == "shutdown":
+			print('Shutdown received')
+			rclpy.shutdown()
+		else:
+			print("init")
+
+	def none_callback(self, data):
+		print('None callback')
+		#return -1
 
 	def receive_connection_thread(self, obj):
 		i = 0
