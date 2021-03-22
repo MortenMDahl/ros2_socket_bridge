@@ -40,7 +40,7 @@ def generate_launch_description(argv=sys.argv[1:]):
     # Any 32 url-safe base64-encoded bytes object passed in as a string.
     # This can be generated using the generate_key.py script in the main folder.
     # Must match with client key.
-    encryption_key = 'UQskrIAyKUoUhhEu5bRVxQTGyfGd6l8yTNLJg_BdsDQ='
+    encryption_key = 'VdzT2kwMacThZWkBigjbtte9iRjW8djEJ10JiemVwLM='
 
 
     param_dir = LaunchConfiguration(

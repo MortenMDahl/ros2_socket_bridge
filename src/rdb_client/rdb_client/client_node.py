@@ -190,7 +190,7 @@ class ClientNode(Node):
 
 		# Create a TCP socket object and connect to server
 		self.clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		self.clientSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
+		self.clientSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,self.BUFFER_SIZE)
 		self.clientSocket.settimeout(None)
 		print('Connecting to server...')
 		
@@ -221,7 +221,9 @@ class ClientNode(Node):
 						try:
 							obj.soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 							obj.soc.settimeout(15)
-							obj.soc.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,1048576) # Øke buffer størrelse?							
+							obj.soc.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,1048576) # Øke buffer størrelse?	
+							obj.soc.sendto(b'initialize_channel', obj.address)
+							time.sleep(0.5)
 						except Exception as e:
 							print("Error creating UDP socket for ", obj.name, ": ", e)
 
@@ -269,7 +271,7 @@ class ClientNode(Node):
 						try:
 							obj.soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 							obj.soc.settimeout(15)
-							obj.soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
+							obj.soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,self.BUFFER_SIZE*2*2)
 							obj.soc.connect((self.server_ip, obj.port))
 							time.sleep(0.5)
 						except Exception as e:
@@ -317,7 +319,6 @@ class ClientNode(Node):
 					msg = pickle.loads(data)
 					obj.publisher.publish(msg)
 				except cryptography.fernet.InvalidToken:
-					print(data_encrypted)
 					continue
 				#	print('Received message with invalid tolken!')
 					#i += 1

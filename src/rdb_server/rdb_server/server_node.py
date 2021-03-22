@@ -86,7 +86,7 @@ class ServerNode(Node):
 
 		As an example, common LaserScan messages are around 7700 bytes when serialized.
 		'''
-		self.BUFFER_SIZE = 32768 
+		self.BUFFER_SIZE = 32768
 
 		# Makes socket object and waits for connection
 
@@ -218,7 +218,7 @@ class ServerNode(Node):
 						try:
 							obj.soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 							obj.soc.settimeout(15)
-							obj.soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
+							obj.soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,self.BUFFER_SIZE)
 							obj.soc.bind((self.server_ip, int(obj.port)))
 							obj.soc.listen(3)
 						except Exception as e:
@@ -299,32 +299,48 @@ class ServerNode(Node):
 			print(str(obj.name) + " connected!")
 
 			while obj.connected:
-				data_encrypted, addr = obj.soc.recvfrom(self.BUFFER_SIZE)
 				# Decrypt with Fernet and deserialize with pickle 
 				try:
+					data_encrypted, addr = obj.soc.recv(self.BUFFER_SIZE)
 					data = self.fernet.decrypt(data_encrypted)
 					msg = pickle.loads(data)
 					obj.publisher.publish(msg)
+				except socket.timeout:
+					print(obj.name, "- No data received.")
+					continue
 				except cryptography.fernet.InvalidToken:
-					# Invalid tolken is the same as not equal encryption key.
-					print('Received message with invalid tolken!')
+					# Invalid tolken is the same as not equal encryption key
+					# or broken message.
+					print(obj.name, '- Received message with invalid tolken!')
 					i += 1
 					if i >= 3:
 						print('Received too many invalid tolkens. Shutting down.')
 						rclpy.shutdown()
-				except socket.timeout:
-					continue
+				
 
 
 		elif obj.protocol == self.TCP_PROTOCOL:
 			while not obj.connected:
 				obj.connection, obj.address = obj.soc.accept()
 				obj.connected = True
+				buf = b''
 
 			print(str(obj.name) + " connected!")
 
 			while obj.connected:
 				data_encrypted = obj.connection.recv(self.BUFFER_SIZE)
+				'''
+				buf += data_stream
+				if b'_split_' not in buf:
+					continue
+				else:
+					buf_decoded = buf.decode()
+					split = buf_decoded.split('_split_')
+					data_encrypted = split[0].encode('utf-8')
+					print(sys.getsizeof(data_encrypted))
+					print(buf)
+					buf = split[1].encode('utf-8')
+				'''
 				try:
 					data = self.fernet.decrypt(data_encrypted)
 					msg = pickle.loads(data)
@@ -332,16 +348,18 @@ class ServerNode(Node):
 						obj.publisher.publish(msg)
 					else:
 						continue
+
 				except cryptography.fernet.InvalidToken:
-					print('Received message with invalid tolken!')
 					i += 1
-					if i >= 3:
-						print('Received too many invalid tolkens. Shutting down.')
-						rclpy.shutdown()
+					if (i == 50) & (warn < 3):
+						print(obj.name + ' - Received multiple invalid tolkens.')
+						print('Could be caused by TCP message size or invalid encryption key.')
+						i = 0
+						warn += 1
 
 
 	# Converts sting to class.
-	# Only works if defined. Remember to import your own custom message types if used.
+	# Only works if said class is defined. Remember to import your own custom message types if used.
 	def str_to_class(self, classname):
 		return getattr(sys.modules[__name__], classname)
 
