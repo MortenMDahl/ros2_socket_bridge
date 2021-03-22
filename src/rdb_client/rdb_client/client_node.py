@@ -289,9 +289,8 @@ class ClientNode(Node):
 
 
 	def receive_connection_thread(self, obj):
-		#i = 0
+		warn = 0
 		if obj.protocol == self.UDP_PROTOCOL:
-			print('Is obj connected before connecting? ', obj.connected)
 			while not obj.connected:
 				try:
 					#time.sleep(1)
@@ -299,7 +298,6 @@ class ClientNode(Node):
 					obj.soc.sendto(b'initialize_channel', (self.server_ip, int(obj.port)))
 					time.sleep(1)
 					temp, client_address = obj.soc.recvfrom(self.BUFFER_SIZE)
-					print(temp)
 					obj.connected = True
 				except socket.timeout:
 					continue
@@ -312,7 +310,11 @@ class ClientNode(Node):
 				try:
 					data_encrypted, addr = obj.soc.recvfrom(self.BUFFER_SIZE)
 				except socket.timeout:
-					print("No data received from", obj.name)
+					if warn < 3:
+						print("No data received from", obj.name)
+						warn += 1
+					if warn == 2:
+						print("Stopping no data warning from", obj.name)
 					continue
 				try:
 					data = self.fernet.decrypt(data_encrypted)
@@ -325,8 +327,6 @@ class ClientNode(Node):
 				#	if i >= 3:
 				#		print('Received too many invalid tolkens. Shutting down.')
 				#		rclpy.shutdown()
-				except socket.timeout:
-					continue
 
 
 		elif obj.protocol == self.TCP_PROTOCOL:

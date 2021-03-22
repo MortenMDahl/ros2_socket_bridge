@@ -238,9 +238,7 @@ class ServerNode(Node):
 							obj.soc.bind((self.server_ip, int(obj.port)))
 							print(obj.name + " establishing connection...")
 							temp, obj.address = obj.soc.recvfrom(self.BUFFER_SIZE)
-							print(obj.name, temp, obj.address)
 							if temp == b'initialize_channel':
-								print(obj.name + ' sending init')
 								obj.soc.sendto(b'confirm_connection', obj.address)
 								print(obj.name + " connected!")
 							time.sleep(0.5)
@@ -259,7 +257,6 @@ class ServerNode(Node):
 							time.sleep(0.5)
 						except Exception as e:
 							print("Error binding ", obj.name, " to requested address: ", e)
-					print(obj.address)
 					obj.subscriber = self.create_subscription(self.str_to_class(obj.msg_type), obj.name, obj.callback, obj.qos)
 					print(obj.name + " subscription started!")
 
@@ -277,7 +274,7 @@ class ServerNode(Node):
 			print('Shutdown received')
 			rclpy.shutdown()
 		else:
-			print("init")
+			pass
 
 	def none_callback(self, data):
 		print('None callback')
@@ -316,8 +313,6 @@ class ServerNode(Node):
 					if i >= 3:
 						print('Received too many invalid tolkens. Shutting down.')
 						rclpy.shutdown()
-				
-
 
 		elif obj.protocol == self.TCP_PROTOCOL:
 			while not obj.connected:
@@ -328,8 +323,8 @@ class ServerNode(Node):
 			print(str(obj.name) + " connected!")
 
 			while obj.connected:
-				data_encrypted = obj.connection.recv(self.BUFFER_SIZE)
-				'''
+				data_stream = obj.connection.recv(1024)
+				
 				buf += data_stream
 				if b'_split_' not in buf:
 					continue
@@ -337,10 +332,8 @@ class ServerNode(Node):
 					buf_decoded = buf.decode()
 					split = buf_decoded.split('_split_')
 					data_encrypted = split[0].encode('utf-8')
-					print(sys.getsizeof(data_encrypted))
-					print(buf)
 					buf = split[1].encode('utf-8')
-				'''
+				
 				try:
 					data = self.fernet.decrypt(data_encrypted)
 					msg = pickle.loads(data)
@@ -356,6 +349,8 @@ class ServerNode(Node):
 						print('Could be caused by TCP message size or invalid encryption key.')
 						i = 0
 						warn += 1
+					if warn == 3:
+						print('Stopping InvalidTolken warning for ' + obj.name)
 
 
 	# Converts sting to class.
