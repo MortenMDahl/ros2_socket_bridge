@@ -77,14 +77,11 @@ class ServerNode(Node):
 		self.INIT_COMPLETE = False
 
 
-
 		'''
 		Quite a large buffer size (2^15, 32K), but it is required for redundancy.
 		If you get a serializing error, this is probably the cause. Too small of buffer size
 		causes the message received to be uncomplete and the deserializer gets error converting
 		wrong types. This occurs when using TCP due to streaming of data. The buffer is sent if it gets filled up.
-
-		As an example, common LaserScan messages are around 7700 bytes when serialized.
 		'''
 		self.BUFFER_SIZE = 32768
 
@@ -143,12 +140,12 @@ class ServerNode(Node):
 
 	def server_msg_handler(self, data):
 		if data[0] == 'init':
-			print('Received init message.')
+			print('Received initialization message.')
 			if data[1] == self.robot_name:
 
 				# Confirm with the client that the settings match
 				confirm_init_msg = 'Matching init received.'.encode('utf-8')
-				print('Matching init. Confirming with client.')
+				print('Matching initialization settings. Confirming with client.')
 				self.server.send(confirm_init_msg)
 
 				# Establish port lists and convert contents to integers
@@ -211,7 +208,7 @@ class ServerNode(Node):
 							obj.soc.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,1048576)
 							obj.soc.bind((self.server_ip, int(obj.port)))
 						except Exception as e:
-							print("Error binding ", obj.name, " to requested address: ", e)
+							print("Error binding ", obj.name, " to the requested address - ", e)
 
 					elif obj.protocol == self.TCP_PROTOCOL:
 						# Creates a TCP socket
@@ -222,12 +219,12 @@ class ServerNode(Node):
 							obj.soc.bind((self.server_ip, int(obj.port)))
 							obj.soc.listen(3)
 						except Exception as e:
-							print("Error binding ", obj.name, " to requested address: ", e)
+							print("Error binding ", obj.name, " to the requested address -", e)
 
 					# Creates thread for connecting the sockets and handling incoming data based on protocol.
 					threading.Thread(target=self.receive_connection_thread, args = [obj]).start()
+				print('Receiving connections established!')
 
-				# Creating subscriptions with callback functions for transmit_objects.
 				for obj in self.transmit_objects:
 					if obj.protocol == self.UDP_PROTOCOL:
 						# Creates an UDP socket
@@ -281,6 +278,7 @@ class ServerNode(Node):
 		#return -1
 
 	def receive_connection_thread(self, obj):
+		warn = 0
 		i = 0
 		if obj.protocol == self.UDP_PROTOCOL:
 			while not obj.connected:
@@ -303,7 +301,12 @@ class ServerNode(Node):
 					msg = pickle.loads(data)
 					obj.publisher.publish(msg)
 				except socket.timeout:
-					print(obj.name, "- No data received.")
+					if warn < 10:
+						print("No data received from", obj.name)
+						warn += 1
+					if warn == 10:
+						print("Stopping warning from", obj.name)
+						warn += 1
 					continue
 				except cryptography.fernet.InvalidToken:
 					# Invalid tolken is the same as not equal encryption key
@@ -357,8 +360,6 @@ class ServerNode(Node):
 	# Only works if said class is defined. Remember to import your own custom message types if used.
 	def str_to_class(self, classname):
 		return getattr(sys.modules[__name__], classname)
-
-
 
 
 

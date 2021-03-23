@@ -202,7 +202,7 @@ class ClientNode(Node):
 				pass
 
 		# Send the init message and wait for response
-		print('Connected! Sending init message...')
+		print('Connected! Sending initialization message...')
 		self.clientSocket.send(init_msg.encode('utf-8'))
 		connection_response = self.clientSocket.recv(2048)
 
@@ -210,7 +210,7 @@ class ClientNode(Node):
 
 		while connection_response != None:
 			if connection_response == 'Matching init received.':
-				print('Matching init confirmed.')
+				print('Matching initialization message confirmed.')
 				# Sleeping to ensure that the server readies the ports for communication
 				# before attempting to connect.
 				time.sleep(2)
@@ -223,6 +223,7 @@ class ClientNode(Node):
 							obj.soc.settimeout(15)
 							obj.soc.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,1048576) # Øke buffer størrelse?	
 							obj.soc.sendto(b'initialize_channel', obj.address)
+							print(obj.name + " establishing connection...")
 							time.sleep(0.5)
 						except Exception as e:
 							print("Error creating UDP socket for ", obj.name, ": ", e)
@@ -233,10 +234,10 @@ class ClientNode(Node):
 							obj.soc.settimeout(15)
 							obj.soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
 							obj.soc.connect(obj.address)
-							#time.sleep(0.5)
 						except Exception as e:
 							print("Error connecting ", obj.name, " to requested address: ", e)
 					# Creates a subscriber for each object with its appropriate callback function based on protocol.
+					print(obj.name + " connected!")
 					obj.subscriber = self.create_subscription(self.str_to_class(obj.msg_type), obj.name, obj.callback, obj.qos)
 				print('Transmission channels established!')
 
@@ -253,20 +254,9 @@ class ClientNode(Node):
 							obj.soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 							obj.soc.settimeout(15)
 							obj.soc.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,1048576)
-
-							#obj.soc.sendto(b'initialize_channel', (self.server_ip, int(obj.port)))
-
-							#print(obj.name + " receiving")
-							#temp, addr = obj.soc.recvfrom(self.BUFFER_SIZE)
-
-							#time.sleep(1) # Not to surpass server
-
-							#if temp == b'confirm_connection':
-							#		obj.connected = True
-
-							#connection_process.terminate()
 						except Exception as e:
 							print("Error creating UDP socket for ", obj.name, ": ", e)
+
 					elif obj.protocol == self.TCP_PROTOCOL:
 						try:
 							obj.soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -275,7 +265,7 @@ class ClientNode(Node):
 							obj.soc.connect((self.server_ip, obj.port))
 							time.sleep(0.5)
 						except Exception as e:
-							print("Error connecting ", obj.name, " to requested address: ", e)
+							print("Error connecting ", obj.name, " to the requested address -", e)
 
 					# Creates thread for handling incoming messages.
 					threading.Thread(target=self.receive_connection_thread, args = [obj]).start()
@@ -290,6 +280,7 @@ class ClientNode(Node):
 
 	def receive_connection_thread(self, obj):
 		warn = 0
+		i = 0
 		if obj.protocol == self.UDP_PROTOCOL:
 			while not obj.connected:
 				try:
@@ -310,11 +301,11 @@ class ClientNode(Node):
 				try:
 					data_encrypted, addr = obj.soc.recvfrom(self.BUFFER_SIZE)
 				except socket.timeout:
-					if warn < 3:
+					if warn < 10:
 						print("No data received from", obj.name)
 						warn += 1
-					if warn == 2:
-						print("Stopping no data warning from", obj.name)
+					if warn == 10:
+						print("Stopping warning from", obj.name)
 					continue
 				try:
 					data = self.fernet.decrypt(data_encrypted)
@@ -322,24 +313,50 @@ class ClientNode(Node):
 					obj.publisher.publish(msg)
 				except cryptography.fernet.InvalidToken:
 					continue
-				#	print('Received message with invalid tolken!')
-					#i += 1
-				#	if i >= 3:
-				#		print('Received too many invalid tolkens. Shutting down.')
-				#		rclpy.shutdown()
+					print('Received message with invalid tolken!')
+					i += 1
+					if i >= 3:
+						print('Received too many invalid tolkens. Shutting down.')
+						rclpy.shutdown()
 
 
 		elif obj.protocol == self.TCP_PROTOCOL:
 			while not obj.connected:
 				obj.soc.connect((self.server_ip, obj.port))
+				time.sleep(1)
 				obj.connected = True
+				buf = b''
+
+			print(str(obj.name) + " connected!")
 
 			while obj.connected:
 				try:
-					data_encrypted = obj.soc.recv(self.BUFFER_SIZE)
+					data_stream = obj.soc.recv(1024)
+				except socket.timeout:
+					if warn < 10:
+						print("Warning number", warn, "| No data received from", obj.name)
+						warn += 1
+					if warn == 10:
+						print("Stopping warning from", obj.name)
+						warn += 1
+					continue
+
+				buf += data_stream
+				if b'_split_' not in buf:
+					continue
+				else:
+					buf_decoded = buf.decode()
+					split = buf_decoded.split('_split_')
+					data_encrypted = split[0].encode('utf-8')
+					buf = split[1].encode('utf-8')
+				
+				try:
 					data = self.fernet.decrypt(data_encrypted)
 					msg = pickle.loads(data)
-					obj.publisher.publish(msg)
+					if msg != None:
+						obj.publisher.publish(msg)
+					else:
+						continue
 				except socket.timeout:
 					continue
 				except cryptography.fernet.InvalidToken:
