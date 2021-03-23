@@ -10,7 +10,7 @@ client_node:
     # between the server and client.
     # ---------------------------------------------------------------------------
 
-    server_ip: '192.168.10.250'
+    server_ip: '127.0.0.1'
     server_port: 3000
 
 
