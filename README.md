@@ -6,9 +6,13 @@ The ros2_domain_bridge package is made to enable communication across different 
 
 ```export ROS_DOMAIN_ID=*```. 
 
+This allows for multiple different use-cases where the user wants to separate data available. An example is robot fleets, where multiple robots have their own navigation software. A behaviortree could be running on a separate domain where it could send commands to each robot without confusing topic namespaces.
+
+The package is made as part of a masters thesis in "Mechanical Engineering - Robotics and Automation" at NTNU, spring 2021.
+
 ## Installation
 
-Install from source as with any other ROS2 package - download and run ```colcon build```, then source the setup.bash file.
+Install from source by navigating to the folder you wish to install in. Run ```git clone``` followed by the git URL to download the package. Once downloaded, navigate inside the folder and build using ```colcon build```. Remember to source the 'install/setup.bash' file after installation. Two additional packages, rdb_server and rdb_client, should now be listed in the package list (```ros2 pkg list```).
 
 ### Requirements
 * Python 3.6+
@@ -16,28 +20,29 @@ Install from source as with any other ROS2 package - download and run ```colcon 
 * 'Cryptography' Python package (pip install cryptography)
 
 
-## Usage
+## Setup
 
 The use case for this package is only set by imagination, however it does require a little bit of configuration to work with any topic.
 
 ### Generating an encryption key
-Due to security risks using the pickle package, all messages are encrypted when sent. To encrypt messages, an encryption key is needed. This can be any 32 url-safe base64-encoded bytes object, and you can generate one by running the ```generate_key.py``` script located in the main folder of ros2_domain_bridge.
+Due to security risks using the pickle package, all messages are encrypted when sent. To encrypt messages, an encryption key is needed. This can be any 32 url-safe base64-encoded bytes object, and you can generate one by running the 'generate_key.py' script located in the main folder of ros2_domain_bridge.
 
 Navigate to the ros2_domain_bridge folder and run
 ```
-python3 generate_key.py
+$ python3 generate_key.py
 ```
-A file named 'key.txt' containing your key should appear in the main folder. It is important that both the server and the client has the same key to be able to decrypt messages. Where to set the encryption key will be explained in the setup sections.
+A file named 'key.txt' containing your key should appear in the main folder. It is important that both the server and the client has the same key to be able to decrypt messages. Where to set the encryption key will be explained in the following sections.
 
 ### Server setup
-The server requires that you set ```server_ip``` in the 'src/rdb_server/config/bringup.yaml' file to the IP of your computer which is running the server node. 
+The server requires that you set ```server_ip``` in the 'src/rdb_server/config/bringup.yaml' file to the IP of your computer which is running the server node. This could also be the local IP of the computer if you are planning on transferring the topics locally.
 
 After this, open the launch file 'src/rdb_server/launch/server.launch.py'. This is where you select the robot name (which must match with the client), the port to be used as main communication between server and client, and finally your encryption key.
 
 This is all the setup required to run the server. Topics to be transmitted or received, protocols and QoS is all set at the client.
 
+
 ### Client setup
-The main client setup is done in the 'src/rdb_client/config/bringup.yaml' file. In the file you will find a detailed description of all variables required. 
+The main client setup is done in the 'src/rdb_client/config/bringup.yaml' file. In the file you will find a detailed description of all variables required.
 
 First, set the ```server_ip``` and ```server_port``` variables. These must match with whatever you set up in the server.
 
@@ -55,11 +60,11 @@ In its default form, the server and client is set up to work with the Turtlebot3
 
 In two of the terminals, run
 
-```export ROS_DOMAIN_ID=42```
+```export ROS_DOMAIN_ID=1```
 
 And in the other two, run
 
-```export ROS_DOMAIN_ID=10```
+```export ROS_DOMAIN_ID=2```
 
 You should now have two independent ROS domains running. Topics on one domain can not be seen by the other.
 
@@ -79,9 +84,9 @@ In the remaining client-side terminal, run
 ros2 launch rdb_client client.launch.py
 ```
 
-Connection should be started between the server and client. The server should confirm that it received an init message, that the init message is matching, and that the receiving topics have connected.
+Connection should be started between the server and client. The server should confirm that it received an initialization message, that the initialization message is matching, and that the receiving topics have connected.
 
-On the available server-side terminal, run ```ros2 topic list```. You should see '/tester/scan' and '/tester/odom'. These are the topics received from the client.
+On the available server-side terminal, run ```ros2 topic list```. You should see '/fleet1/robot2/scan' and '/fleet1/robot2/odom'. These are the topics received from the client.
 
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
