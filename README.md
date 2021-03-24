@@ -2,13 +2,17 @@
 
 **README and the project is still under development. Any feedback is appreciated! Contact me at mortemd@stud.ntnu.no.**
 
-The ros2_domain_bridge package is made to enable communication across different domains set with 
+The ros2_domain_bridge package is made to enable node communication across different domains set with 
 
 ```export ROS_DOMAIN_ID=*```. 
 
-This allows for multiple different use-cases where the user wants to separate data available. An example is robot fleets, where multiple robots have their own navigation software. A behaviortree could be running on a separate domain where it could send commands to each robot without confusing topic namespaces.
+It works by utilizing subscribers and publishers combined with socket communication, which allows the user to transfer information received over topics to different domains.
+
+This allows for multiple different use-cases where the user wants to restrict the amount of topics per domain. An example is robot fleets, where multiple robots have their own navigation software. A behaviortree could be running on a separate domain where it could send commands to each robot without confusing topic namespaces.
 
 The package is made as part of a masters thesis in "Mechanical Engineering - Robotics and Automation" at NTNU, spring 2021.
+
+The package currently only works with topics - not services or actions.
 
 ## Installation
 
