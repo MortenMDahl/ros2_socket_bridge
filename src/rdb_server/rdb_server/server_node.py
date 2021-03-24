@@ -148,12 +148,19 @@ class ServerNode(Node):
 				print('Matching initialization settings. Confirming with client.')
 				self.server.send(confirm_init_msg)
 
+				# Here, the "transmit" lists are the exact same as listed in the client initialization file.
+				# This means that the transmit topics listed here is to be sent to the server from the client.
+				# Naming is corrected later.
+
 				# Establish port lists and convert contents to integers
 				self.transmit_topics = list(data[2].split(';'))
 				self.transmit_msg_types = list(data[3].split(';'))
 
 				self.transmit_ports = list(data[4].split(';'))
-				self.transmit_ports = [int(port) for port in self.transmit_ports]
+				try:
+					self.transmit_ports = [int(port) for port in self.transmit_ports]
+				except ValueError:
+					pass
 
 				self.transmit_protocols = list(data[5].split(';'))
 				self.transmit_qos = []
@@ -164,13 +171,19 @@ class ServerNode(Node):
 					try:
 						self.transmit_qos.append(int(qos))
 					except Exception:
-						self.transmit_qos.append(self.str_to_class(qos))
+						try:
+							self.transmit_qos.append(self.str_to_class(qos))
+						except AttributeError:
+							pass
 
 				self.receive_topics = list(data[7].split(';'))
 				self.receive_msg_types = list(data[8].split(';'))
 
 				self.receive_ports = list(data[9].split(';'))
-				self.receive_ports = [int(port) for port in self.receive_ports]
+				try:
+					self.receive_ports = [int(port) for port in self.receive_ports]
+				except ValueError:
+					pass
 
 				self.receive_protocols = list(data[10].split(';'))
 				self.receive_qos = []
@@ -181,15 +194,24 @@ class ServerNode(Node):
 					try:
 						self.receive_qos.append(int(qos))
 					except Exception:
-						self.receive_qos.append(self.str_to_class(qos))
+						try:
+							self.receive_qos.append(self.str_to_class(qos))
+						except AttributeError:
+							pass
 
 
-				# Takes the received transmit and assigns them to objects
+				# Creates objects and renames the transmit topics from client to be receive on the server.
 				for i in range(len(self.transmit_topics)):
-					self.receive_objects.append(BridgeObject(self.DIRECTION_RECEIVE, self.key, self.transmit_topics[i], self.transmit_msg_types[i], self.transmit_ports[i], self.transmit_protocols[i], self.transmit_qos[i]))
+					try:
+						self.receive_objects.append(BridgeObject(self.DIRECTION_RECEIVE, self.key, self.transmit_topics[i], self.transmit_msg_types[i], self.transmit_ports[i], self.transmit_protocols[i], self.transmit_qos[i]))
+					except IndexError: # Any index problems should already be handled on the client. This fixes an empty list of topics.
+						self.receive_objects = []
 
 				for j in range(len(self.receive_topics)):
-					self.transmit_objects.append(BridgeObject(self.DIRECTION_TRANSMIT, self.key, self.receive_topics[j], self.receive_msg_types[j], self.receive_ports[j], self.receive_protocols[j], self.receive_qos[j]))
+					try:
+						self.transmit_objects.append(BridgeObject(self.DIRECTION_TRANSMIT, self.key, self.receive_topics[j], self.receive_msg_types[j], self.receive_ports[j], self.receive_protocols[j], self.receive_qos[j]))
+					except IndexError:
+						self.transmit_objects = []
 
 				# Prepairing receive_objects to be used for communication
 				# If the robot name is empty, create a publisher to the requested topic without robot namespace
@@ -296,7 +318,7 @@ class ServerNode(Node):
 			while obj.connected:
 				# Decrypt with Fernet and deserialize with pickle 
 				try:
-					data_encrypted, addr = obj.soc.recv(self.BUFFER_SIZE)
+					data_encrypted, addr = obj.soc.recvfrom(self.BUFFER_SIZE)
 					data = self.fernet.decrypt(data_encrypted)
 					msg = pickle.loads(data)
 					obj.publisher.publish(msg)

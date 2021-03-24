@@ -98,13 +98,18 @@ class ClientNode(Node):
 
 
 		# Checks to see if the user has given the right amount of settings.
-		if not (len(self.transmit_topics) == len(self.transmit_ports) == len(self.transmit_protocols)):
-			raise Exception('transmit topics not matching amount of ports or protocols assigned. Shutting down.')
-			rclpy.shutdown()
-
-		if not (len(self.receive_topics) == len(self.receive_ports) == len(self.receive_protocols)):
-			raise Exception('receive topics not matching amount of ports or protocols assigned. Shutting down.')
-			rclpy.shutdown()
+		try:
+			if not (len(self.transmit_topics) == len(self.transmit_ports) == len(self.transmit_protocols)):
+				raise Exception('transmit topics not matching amount of ports or protocols assigned. Shutting down.')
+				rclpy.shutdown()
+		except TypeError:
+			pass
+		try:
+			if not (len(self.receive_topics) == len(self.receive_ports) == len(self.receive_protocols)):
+				raise Exception('receive topics not matching amount of ports or protocols assigned. Shutting down.')
+				rclpy.shutdown()
+		except TypeError:
+			pass
 
 
 		self.thread_objects = []
@@ -114,80 +119,121 @@ class ClientNode(Node):
 
 		# Create initial message for setting up multiple sockets on the server
 		init_msg = 'init:'+ str(robot_name) + ':'               # 0, 1
+		try:
+			for i in range(len(self.transmit_topics)):
+				init_msg += str(self.transmit_topics[i]) + ';'
+			init_msg = init_msg[:-1]                                # 2
+			init_msg += ':'
+		except TypeError:
+			init_msg += ':'
 
-		for i in range(len(self.transmit_topics)):
-			init_msg += str(self.transmit_topics[i]) + ';'
-		init_msg = init_msg[:-1]                                # 2
-		init_msg += ':'
+		try:
+			for j in range(len(self.transmit_msg_types)):
+				init_msg += str(self.transmit_msg_types[j]) + ';'
+			init_msg = init_msg[:-1]                                # 3
+			init_msg += ':'    
+		except TypeError:
+			init_msg += ':'
 
-		for j in range(len(self.transmit_msg_types)):
-			init_msg += str(self.transmit_msg_types[j]) + ';'
-		init_msg = init_msg[:-1]                                # 3
-		init_msg += ':'    
+		try:
+			for k in range(len(self.transmit_ports)):
+				init_msg += str(self.transmit_ports[k]) + ';'
+			init_msg = init_msg[:-1]                                # 4
+			init_msg += ':'
+		except TypeError:
+			init_msg += ':'
 
-		for k in range(len(self.transmit_ports)):
-			init_msg += str(self.transmit_ports[k]) + ';'
-		init_msg = init_msg[:-1]                                # 4
-		init_msg += ':'
+		try:
+			for l in range(len(self.transmit_protocols)):
+				init_msg += str(self.transmit_protocols[l]) + ';'
+			init_msg = init_msg[:-1]                                # 5
+			init_msg += ':'
+		except TypeError:
+			init_msg += ':'
 
-		for l in range(len(self.transmit_protocols)):
-			init_msg += str(self.transmit_protocols[l]) + ';'
-		init_msg = init_msg[:-1]                                # 5
-		init_msg += ':'
+		try:
+			for m in range(len(transmit_qos_temp)):
+				init_msg += str(transmit_qos_temp[m]) + ';'
+			init_msg = init_msg[:-1]                                # 6
+			init_msg += ':'
+		except TypeError:
+			init_msg += ':'
 
-		for m in range(len(transmit_qos_temp)):
-			init_msg += str(transmit_qos_temp[m]) + ';'
-		init_msg = init_msg[:-1]                                # 6
-		init_msg += ':'
+		try:
+			for n in range(len(self.receive_topics)):
+				init_msg += str(self.receive_topics[n]) + ';'
+			init_msg = init_msg[:-1]                                # 7
+			init_msg += ':'
+		except TypeError:
+			init_msg += ':'
 
-		for n in range(len(self.receive_topics)):
-			init_msg += str(self.receive_topics[n]) + ';'
-		init_msg = init_msg[:-1]                                # 7
-		init_msg += ':'
+		try:
+			for o in range(len(self.receive_msg_types)):
+				init_msg += str(self.receive_msg_types[o]) + ';'
+			init_msg = init_msg[:-1]                                # 8
+			init_msg += ':'
+		except TypeError:
+			init_msg += ':'
 
-		for o in range(len(self.receive_msg_types)):
-			init_msg += str(self.receive_msg_types[o]) + ';'
-		init_msg = init_msg[:-1]                                # 8
-		init_msg += ':'
+		try:
+			for p in range(len(self.receive_ports)):
+				init_msg += str(self.receive_ports[p]) + ';'
+			init_msg = init_msg[:-1]                                # 9
+			init_msg += ':'
+		except TypeError:
+			init_msg += ':'
 
-		for p in range(len(self.receive_ports)):
-			init_msg += str(self.receive_ports[p]) + ';'
-		init_msg = init_msg[:-1]                                # 9
-		init_msg += ':'
+		try:
+			for q in range(len(self.receive_protocols)):
+				init_msg += str(self.receive_protocols[q]) + ';'
+			init_msg = init_msg[:-1]                                # 10
+			init_msg += ':'
+		except TypeError:
+			init_msg += ':'
 
-		for q in range(len(self.receive_protocols)):
-			init_msg += str(self.receive_protocols[q]) + ';'
-		init_msg = init_msg[:-1]                                # 10
-		init_msg += ':'
-
-		for r in range(len(receive_qos_temp)):
-			init_msg += str(receive_qos_temp[r]) + ';'
-		init_msg = init_msg[:-1]                                # 11
-
+		try:
+			for r in range(len(receive_qos_temp)):
+				init_msg += str(receive_qos_temp[r]) + ';'
+			init_msg = init_msg[:-1]                                # 11
+		except TypeError:
+			init_msg += ':'
 
 		'''
 		Change the qos from being a string into being either integer or class.
 		The str_to_class converts any string to a class, if the class is defined.
 		'''
-		for qos in transmit_qos_temp:
-					try:
-						self.transmit_qos.append(int(qos))
-					except Exception:
-						self.transmit_qos.append(self.str_to_class(qos))
+		try:
+			for qos in transmit_qos_temp:
+						try:
+							self.transmit_qos.append(int(qos))
+						except Exception:
+							self.transmit_qos.append(self.str_to_class(qos))
+		except TypeError:
+			pass
 
-		for qos in receive_qos_temp:
-					try:
-						self.receive_qos.append(int(qos))
-					except Exception:
-						self.receive_qos.append(self.str_to_class(qos))
+		try:
+			for qos in receive_qos_temp:
+						try:
+							self.receive_qos.append(int(qos))
+						except Exception:
+							self.receive_qos.append(self.str_to_class(qos))
+		except TypeError:
+			pass
 
 		# Creates bridge objects later to be used for receiving and sending messages.
-		for i in range(len(self.transmit_topics)):
-			self.transmit_objects.append(BridgeObject(self.DIRECTION_TRANSMIT, self.key, self.transmit_topics[i], self.transmit_msg_types[i], self.transmit_ports[i], self.transmit_protocols[i], self.transmit_qos[i]))
 
-		for j in range(len(self.receive_topics)):
-			self.receive_objects.append(BridgeObject(self.DIRECTION_RECEIVE, self.key, self.receive_topics[j], self.receive_msg_types[j], self.receive_ports[j], self.receive_protocols[j], self.receive_qos[j]))
+		try:
+			for i in range(len(self.transmit_topics)):
+				self.transmit_objects.append(BridgeObject(self.DIRECTION_TRANSMIT, self.key, self.transmit_topics[i], self.transmit_msg_types[i], self.transmit_ports[i], self.transmit_protocols[i], self.transmit_qos[i]))
+		except TypeError:
+			pass
 
+		try:	
+			for j in range(len(self.receive_topics)):
+				self.receive_objects.append(BridgeObject(self.DIRECTION_RECEIVE, self.key, self.receive_topics[j], self.receive_msg_types[j], self.receive_ports[j], self.receive_protocols[j], self.receive_qos[j]))
+		except TypeError:
+			pass
+			
 		# Create a TCP socket object and connect to server
 		self.clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.clientSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,self.BUFFER_SIZE)

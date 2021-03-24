@@ -52,7 +52,7 @@ client_node:
     #receive_topics: ['scan', 'odom', 'map']
     #receive_msg_types: ['LaserScan', 'Odometry', 'OccupancyGrid']
     #receive_ports: [12004, 12005, 12006]
-    #receive_protocols: ['TCP', 'TCP', 'TCP']
+    #receive_protocols: ['UDP', 'UDP', 'UDP']
     #receive_qos: ['qos_profile_sensor_data', 'qos_profile_sensor_data', 'qos_profile_sensor_data']
 
     #transmit_topics: ['initialpose', 'goal_pose']
@@ -65,11 +65,11 @@ client_node:
     receive_topics: ['initialpose', 'goal_pose']
     receive_msg_types: ['PoseWithCovarianceStamped', 'PoseStamped']
     receive_ports: [12002, 12012]
-    receive_protocols: ['UDP', 'UDP']
+    receive_protocols: ['TCP', 'TCP']
     receive_qos: ['qos_profile_system_default', 'qos_profile_system_default']
 
     transmit_topics: ['scan', 'odom', 'map']
     transmit_msg_types: ['LaserScan', 'Odometry', 'OccupancyGrid']
     transmit_ports: [12004, 12005, 12006]
-    transmit_protocols: ['TCP', 'TCP', 'TCP']
+    transmit_protocols: ['UDP', 'UDP', 'UDP']
     transmit_qos: ['qos_profile_sensor_data', 'qos_profile_sensor_data', 'qos_profile_sensor_data']
