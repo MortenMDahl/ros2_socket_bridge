@@ -208,10 +208,10 @@ class ClientNode(Node):
         except TypeError:
             init_msg += ":"
 
-        """
-		Change the qos from being a string into being either integer or class.
-		The str_to_class converts any string to a class, if the class is defined.
-		"""
+        
+		#Change the qos from being a string into being either integer or class.
+		#The str_to_class converts any string to a class, if the class is defined.
+		
         try:
             for qos in transmit_qos_temp:
                 try:

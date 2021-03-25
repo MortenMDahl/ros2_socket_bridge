@@ -76,13 +76,12 @@ class ServerNode(Node):
         self.DIRECTION_TRANSMIT = "transmit"
 
         self.INIT_COMPLETE = False
-
-        """
-		Quite a large buffer size (2^15, 32K), but it is required for redundancy.
-		If you get a serializing error, this is probably the cause. Too small of buffer size
-		causes the message received to be uncomplete and the deserializer gets error converting
-		wrong types. This occurs when using TCP due to streaming of data. The buffer is sent if it gets filled up.
-		"""
+        
+		#Quite a large buffer size (2^15, 32K), but it is required for redundancy.
+		#If you get a serializing error, this is probably the cause. Too small of buffer size
+		#causes the message received to be uncomplete and the deserializer gets error converting
+		#wrong types. This occurs when using TCP due to streaming of data. The buffer is sent if it gets filled up.
+		
         self.BUFFER_SIZE = 32768
 
         # Makes socket object and waits for connection
@@ -360,10 +359,6 @@ class ServerNode(Node):
             rclpy.shutdown()
         else:
             pass
-
-    def none_callback(self, data):
-        print("None callback")
-        # return -1
 
     def receive_connection_thread(self, obj):
         warn = 0
