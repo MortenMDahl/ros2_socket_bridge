@@ -1,6 +1,6 @@
 # ros2_domain_bridge
 
-**README and the project is still under development. Any feedback is appreciated! Contact me at mortemd@stud.ntnu.no.**
+**README and the project is still under development. Do you have questions or feature requests? Contact me at mortemd@stud.ntnu.no.**
 
 The ros2_domain_bridge package is made to enable node communication across different domains set with 
 
