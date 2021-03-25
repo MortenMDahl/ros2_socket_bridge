@@ -361,8 +361,9 @@ class ServerNode(Node):
             pass
 
     def receive_connection_thread(self, obj):
-        warn = 0
+        warn = 1
         i = 0
+        stopped = False
         if obj.protocol == self.UDP_PROTOCOL:
             while not obj.connected:
                 try:
@@ -383,13 +384,20 @@ class ServerNode(Node):
                     data = self.fernet.decrypt(data_encrypted)
                     msg = pickle.loads(data)
                     obj.publisher.publish(msg)
+                    warn = 1
+                    if stopped:
+                        print(obj.name, "reinitialized.")
+                        stopped = False
                 except socket.timeout:
-                    if warn < 10:
-                        print("No data received from", obj.name)
-                        warn += 1
-                    if warn == 10:
-                        print("Stopping warning from", obj.name)
-                        warn += 1
+                    if warn < 5:
+                        print("No data received from", obj.name, "| Warning #", warn)
+                    warn += 1
+                    if warn == 5:
+                        print("\n===============================")
+                        print("Stopping warning for", obj.name)
+                        print("===============================\n")
+                        warn = 20
+                        stopped = True
                     continue
                 except cryptography.fernet.InvalidToken:
                     # Invalid tolken is the same as not equal encryption key
@@ -409,7 +417,23 @@ class ServerNode(Node):
             print(str(obj.name) + " connected!")
 
             while obj.connected:
-                data_stream = obj.connection.recv(1024)
+                try: 
+                    data_stream = obj.connection.recv(1024)
+                    warn = 1
+                    if stopped:
+                        print(obj.name, "reinitialized.")
+                        stopped = False
+                except socket.timeout:
+                    if warn < 5:
+                        print("No data received from", obj.name, "| Warning #", warn)
+                    warn += 1
+                    if warn == 5:
+                        print("\n===============================")
+                        print("Stopping warning for", obj.name)
+                        print("===============================\n")
+                        warn = 20
+                        stopped = True
+                    continue
 
                 buf += data_stream
                 if b"_split_" not in buf:
@@ -425,6 +449,7 @@ class ServerNode(Node):
                     msg = pickle.loads(data)
                     if msg != None:
                         obj.publisher.publish(msg)
+                        warn = 1
                     else:
                         continue
 

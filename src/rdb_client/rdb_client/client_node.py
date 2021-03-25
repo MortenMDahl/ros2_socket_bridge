@@ -385,8 +385,9 @@ class ClientNode(Node):
             connection_response = None
 
     def receive_connection_thread(self, obj):
-        warn = 0
+        warn = 1
         i = 0
+        stopped = False
         if obj.protocol == self.UDP_PROTOCOL:
             while not obj.connected:
                 try:
@@ -408,17 +409,26 @@ class ClientNode(Node):
             while obj.connected:
                 try:
                     data_encrypted, addr = obj.soc.recvfrom(self.BUFFER_SIZE)
+                    warn = 1
+                    if stopped:
+                        print(obj.name, "reinitialized.")
+                        stopped = False
                 except socket.timeout:
-                    if warn < 10:
-                        print("No data received from", obj.name)
-                        warn += 1
-                    if warn == 10:
-                        print("Stopping warning from", obj.name)
+                    if warn < 5:
+                        print("No data received from", obj.name, "| Warning #", warn)
+                    warn += 1
+                    if warn == 5:
+                        print("\n===============================")
+                        print("Stopping warning for", obj.name)
+                        print("===============================\n")
+                        warn = 20
+                        stopped = True
                     continue
                 try:
                     data = self.fernet.decrypt(data_encrypted)
                     msg = pickle.loads(data)
                     obj.publisher.publish(msg)
+                    warn = 0
                 except cryptography.fernet.InvalidToken:
                     continue
                     print("Received message with invalid tolken!")
@@ -439,15 +449,21 @@ class ClientNode(Node):
             while obj.connected:
                 try:
                     data_stream = obj.soc.recv(1024)
+                    warn = 1
+                    if stopped:
+                        print(obj.name, "reinitialized.")
+                        stopped = False
+                        warn = 1
                 except socket.timeout:
-                    if warn < 10:
-                        print(
-                            "Warning number", warn, "| No data received from", obj.name
-                        )
-                        warn += 1
-                    if warn == 10:
-                        print("Stopping warning from", obj.name)
-                        warn += 1
+                    if warn < 5:
+                        print("No data received from", obj.name, "| Warning #", warn)
+                    warn += 1
+                    if warn == 5:
+                        print("\n===============================")
+                        print("Stopping warning for", obj.name)
+                        print("===============================\n")
+                        warn = 20
+                        stopped = True
                     continue
 
                 buf += data_stream
