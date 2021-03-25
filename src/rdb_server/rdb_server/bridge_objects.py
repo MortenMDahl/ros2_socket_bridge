@@ -18,36 +18,39 @@ import rclpy
 import pickle
 from cryptography.fernet import Fernet
 
+
 class BridgeObject:
-	def __init__(self, direction, encryption_key, name, msg_type, port, protocol, qos = 10):
-		self.direction = direction
-		self.name = name
-		self.msg_type = msg_type
-		self.port = port
-		self.protocol = protocol
-		self.qos = qos
-		self.fernet = Fernet(encryption_key)
+    def __init__(
+        self, direction, encryption_key, name, msg_type, port, protocol, qos=10
+    ):
+        self.direction = direction
+        self.name = name
+        self.msg_type = msg_type
+        self.port = port
+        self.protocol = protocol
+        self.qos = qos
+        self.fernet = Fernet(encryption_key)
 
-		# Socket variables
-		self.soc = None
-		self.connected = False
-		self.connection = None
-		self.address = None
-		self.UDP_PROTOCOL = 'UDP'
-		self.TCP_PROTOCOL = 'TCP'
-		
-		# Publisher and subscriber variables
-		self.publisher = None
-		self.subscriber = None
+        # Socket variables
+        self.soc = None
+        self.connected = False
+        self.connection = None
+        self.address = None
+        self.UDP_PROTOCOL = "UDP"
+        self.TCP_PROTOCOL = "TCP"
 
-	def str_to_class(self, classname):
-		return getattr(sys.modules[__name__], classname)
-	
-	def callback(self, data):
-		serialized_msg = pickle.dumps(data)
-		msg_encrypted = self.fernet.encrypt(serialized_msg)
-		if self.protocol == self.UDP_PROTOCOL:
-			self.soc.sendto(msg_encrypted, self.address)
-		elif self.protocol == self.TCP_PROTOCOL:
-			msg_encrypted += b'_split_'
-			self.connection.send(msg_encrypted)
+        # Publisher and subscriber variables
+        self.publisher = None
+        self.subscriber = None
+
+    def str_to_class(self, classname):
+        return getattr(sys.modules[__name__], classname)
+
+    def callback(self, data):
+        serialized_msg = pickle.dumps(data)
+        msg_encrypted = self.fernet.encrypt(serialized_msg)
+        if self.protocol == self.UDP_PROTOCOL:
+            self.soc.sendto(msg_encrypted, self.address)
+        elif self.protocol == self.TCP_PROTOCOL:
+            msg_encrypted += b"_split_"
+            self.connection.send(msg_encrypted)

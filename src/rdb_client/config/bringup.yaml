@@ -29,6 +29,8 @@ client_node:
     # ---------------------------------------------------------------------------
     # *_ports
     # Ports to be used on the server. These ports must be available.
+    # It is recommended to use the dynamic ports (49152-65535), as to not 
+    # interfer with other programs that are registered by IANA.
     # ---------------------------------------------------------------------------
     # *_protocols
     # Protocol to be used for sending or receiving data.

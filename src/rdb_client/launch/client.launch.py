@@ -31,7 +31,7 @@ import argparse
 def generate_launch_description(argv=sys.argv[1:]):
 
     # Can be anything to fit your desired method of naming. Must match with server.
-    robot_name = 'fleet1/robot2'
+    name = 'fleet1/robot2'
 
     # Whether or not to use robot name as a prefix for incoming topics
     use_name = 'false'
@@ -60,6 +60,6 @@ def generate_launch_description(argv=sys.argv[1:]):
             name="client_node",
             output="screen",
             emulate_tty=True,
-            arguments=['-name', robot_name, '-key', encryption_key, '-usename', use_name],
+            arguments=['-name', name, '-key', encryption_key, '-usename', use_name],
             parameters=[param_dir]),
  ])
