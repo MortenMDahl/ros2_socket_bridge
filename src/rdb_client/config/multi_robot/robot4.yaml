@@ -64,7 +64,7 @@ client_node:
     #transmit_qos: ['qos_profile_system_default', 'qos_profile_system_default']
 
 
-    receive_topics: ['initialpose', 'goal_pose']
+    receive_topics: ['fleet1/robot4/initialpose', 'fleet1/robot4/goal_pose']
     receive_msg_types: ['PoseWithCovarianceStamped', 'PoseStamped']
     receive_ports: [12012, 12013]
     receive_protocols: ['TCP', 'TCP']
