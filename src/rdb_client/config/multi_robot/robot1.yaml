@@ -70,8 +70,8 @@ client_node:
     receive_protocols: ['TCP', 'TCP']
     receive_qos: ['qos_profile_system_default', 'qos_profile_system_default']
 
-    transmit_topics: ['scan']
-    transmit_msg_types: ['LaserScan']
+    transmit_topics: ['scan', 'odom']
+    transmit_msg_types: ['LaserScan', 'Odometry']
     transmit_ports: [12002, 12003]
-    transmit_protocols: ['UDP']
-    transmit_qos: ['qos_profile_sensor_data']
+    transmit_protocols: ['UDP', 'UDP']
+    transmit_qos: ['qos_profile_sensor_data', 'qos_profile_sensor_data']

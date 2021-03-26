@@ -11,7 +11,7 @@ client_node:
     # ---------------------------------------------------------------------------
 
     server_ip: '192.168.10.120'
-    server_port: 3001
+    server_port: 3004
 
 
     # ---------------------------------------------------------------------------
@@ -66,12 +66,12 @@ client_node:
 
     receive_topics: ['initialpose', 'goal_pose']
     receive_msg_types: ['PoseWithCovarianceStamped', 'PoseStamped']
-    receive_ports: [12000, 12001]
+    receive_ports: [12012, 12013]
     receive_protocols: ['TCP', 'TCP']
     receive_qos: ['qos_profile_system_default', 'qos_profile_system_default']
 
-    transmit_topics: ['scan']
-    transmit_msg_types: ['LaserScan']
-    transmit_ports: [12002, 12003]
-    transmit_protocols: ['UDP']
-    transmit_qos: ['qos_profile_sensor_data']
+    transmit_topics: ['scan', 'odom']
+    transmit_msg_types: ['LaserScan', 'Odometry']
+    transmit_ports: [12014, 12015]
+    transmit_protocols: ['UDP', 'UDP']
+    transmit_qos: ['qos_profile_sensor_data', 'qos_profile_sensor_data']
