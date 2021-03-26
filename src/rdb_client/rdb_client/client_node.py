@@ -270,7 +270,7 @@ class ClientNode(Node):
             socket.SOL_SOCKET, socket.SO_REUSEADDR, self.BUFFER_SIZE
         )
         self.clientSocket.settimeout(None)
-        print("Connecting to server...")
+        print(self.robot_name, "connecting to server ({}:{})...".format(self.server_ip, self.server_port))
 
         while not connected:
             try:

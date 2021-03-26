@@ -36,10 +36,10 @@ def generate_launch_description(argv=sys.argv[1:]):
     name3 = 'fleet1/robot3'
     name4 = 'fleet1/robot4'
 
-    server_port1 = '3001'
-    server_port2 = '3002'
-    server_port3 = '3003'
-    server_port4 = '3004'
+    server_port1 = '13001'
+    server_port2 = '13002'
+    server_port3 = '13003'
+    server_port4 = '13004'
 
     # Whether or not to use name as a prefix for incoming topics
     use_name = 'true'
