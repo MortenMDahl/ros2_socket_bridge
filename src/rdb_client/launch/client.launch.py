@@ -31,7 +31,7 @@ import argparse
 def generate_launch_description(argv=sys.argv[1:]):
 
     # Can be anything to fit your desired method of naming. Must match with server.
-    name = 'fleet1/robot2'
+    name = 'fleet1/robot1'
 
     # Whether or not to use robot name as a prefix for incoming topics
     use_name = 'false'

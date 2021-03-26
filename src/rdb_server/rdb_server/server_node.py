@@ -15,6 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from timeit import default_timer as timer
+
 import sys
 import rclpy
 from rclpy.node import Node
@@ -380,11 +382,16 @@ class ServerNode(Node):
             while obj.connected:
                 # Decrypt with Fernet and deserialize with pickle
                 try:
+                    file = open('timer.txt','a')
                     data_encrypted, addr = obj.soc.recvfrom(self.BUFFER_SIZE)
+                    start = timer()
                     data = self.fernet.decrypt(data_encrypted)
                     msg = pickle.loads(data)
                     obj.publisher.publish(msg)
                     warn = 1
+                    end = timer()
+                    file.write(str(end-start) + "\n")
+                    file.close()
                     if stopped:
                         print(obj.name, "reinitialized.")
                         stopped = False

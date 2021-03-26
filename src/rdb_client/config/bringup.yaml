@@ -10,8 +10,8 @@ client_node:
     # between the server and client.
     # ---------------------------------------------------------------------------
 
-    server_ip: '127.0.0.1'
-    server_port: 3000
+    server_ip: '192.168.10.120'
+    server_port: 3001
 
 
     # ---------------------------------------------------------------------------
@@ -70,8 +70,8 @@ client_node:
     receive_protocols: ['TCP', 'TCP']
     receive_qos: ['qos_profile_system_default', 'qos_profile_system_default']
 
-    transmit_topics: ['scan', 'odom', 'map']
-    transmit_msg_types: ['LaserScan', 'Odometry', 'OccupancyGrid']
-    transmit_ports: [12004, 12005, 12006]
-    transmit_protocols: ['UDP', 'UDP', 'UDP']
-    transmit_qos: ['qos_profile_sensor_data', 'qos_profile_sensor_data', 'qos_profile_sensor_data']
+    transmit_topics: ['scan']
+    transmit_msg_types: ['LaserScan']
+    transmit_ports: [12005]
+    transmit_protocols: ['UDP']
+    transmit_qos: ['qos_profile_sensor_data']

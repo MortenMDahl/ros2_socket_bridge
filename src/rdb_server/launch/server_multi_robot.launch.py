@@ -31,8 +31,15 @@ import argparse
 def generate_launch_description(argv=sys.argv[1:]):
 
     # Can be anything to fit your desired method of naming. Must match with client.
-    name = 'fleet1/robot1'
-    server_port = '3000'
+    name1 = 'fleet1/robot1'
+    name2 = 'fleet1/robot2'
+    name3 = 'fleet1/robot3'
+    name4 = 'fleet1/robot4'
+
+    server_port1 = '3001'
+    server_port2 = '3002'
+    server_port3 = '3003'
+    server_port4 = '3004'
 
     # Whether or not to use name as a prefix for incoming topics
     use_name = 'true'
@@ -62,6 +69,33 @@ def generate_launch_description(argv=sys.argv[1:]):
             name="server_node",
             output="screen",
             emulate_tty=True,
-            arguments=['-name', name, '-p', server_port, '-key', encryption_key, '-usename', use_name],
+            arguments=['-name', name1, '-p', server_port1, '-key', encryption_key, '-usename', use_name],
+            parameters=[param_dir]),
+
+        launch_ros.actions.Node(
+            package="rdb_server",
+            executable="server",
+            name="server_node",
+            output="screen",
+            emulate_tty=True,
+            arguments=['-name', name2, '-p', server_port2, '-key', encryption_key, '-usename', use_name],
+            parameters=[param_dir]),
+
+        launch_ros.actions.Node(
+            package="rdb_server",
+            executable="server",
+            name="server_node",
+            output="screen",
+            emulate_tty=True,
+            arguments=['-name', name3, '-p', server_port3, '-key', encryption_key, '-usename', use_name],
+            parameters=[param_dir]),
+
+        launch_ros.actions.Node(
+            package="rdb_server",
+            executable="server",
+            name="server_node",
+            output="screen",
+            emulate_tty=True,
+            arguments=['-name', name4, '-p', server_port4, '-key', encryption_key, '-usename', use_name],
             parameters=[param_dir]),
  ])
