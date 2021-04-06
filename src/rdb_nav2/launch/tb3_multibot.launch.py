@@ -21,6 +21,7 @@ The robots co-exist on a shared environment and are controlled by independent na
 """
 
 import os
+from time import sleep
 
 from ament_index_python.packages import get_package_share_directory
 
@@ -31,7 +32,6 @@ from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, TextSubstitution
 
-
 def generate_launch_description():
     # Get the launch directory
     bringup_dir = get_package_share_directory('nav2_bringup')
@@ -41,7 +41,8 @@ def generate_launch_description():
     # Names and poses of the robots
     robots = [
         {'name': 'robot1', 'x_pose': 0.0, 'y_pose': 0.5, 'z_pose': 0.01},
-        {'name': 'robot2', 'x_pose': 0.0, 'y_pose': -0.5, 'z_pose': 0.01}]
+        {'name': 'robot2', 'x_pose': 0.0, 'y_pose': -0.5, 'z_pose': 0.01}
+        ]
 
     # Simulation settings
     world = LaunchConfiguration('world')
@@ -75,12 +76,12 @@ def generate_launch_description():
 
     declare_robot1_params_file_cmd = DeclareLaunchArgument(
         'robot1_params_file',
-        default_value=os.path.join(mod_bringup_dir, 'params', 'nav2_multirobot_params_1.yaml'),
+        default_value=os.path.join(mod_bringup_dir, 'params', 'nav2_multirobot_params_1.yaml'), #MOD
         description='Full path to the ROS2 parameters file to use for robot1 launched nodes')
 
     declare_robot2_params_file_cmd = DeclareLaunchArgument(
         'robot2_params_file',
-        default_value=os.path.join(mod_bringup_dir, 'params', 'nav2_multirobot_params_2.yaml'),
+        default_value=os.path.join(mod_bringup_dir, 'params', 'nav2_multirobot_params_2.yaml'), #MOD
         description='Full path to the ROS2 parameters file to use for robot2 launched nodes')
 
     declare_bt_xml_cmd = DeclareLaunchArgument(
@@ -91,7 +92,7 @@ def generate_launch_description():
         description='Full path to the behavior tree xml file to use')
 
     declare_autostart_cmd = DeclareLaunchArgument(
-        'autostart', default_value='true',
+        'autostart', default_value='True',
         description='Automatically startup the stacks')
 
     declare_rviz_config_file_cmd = DeclareLaunchArgument(
@@ -144,7 +145,6 @@ def generate_launch_description():
     # Define commands for launching the navigation instances
     nav_instances_cmds = []
     for robot in robots:
-        index = robots.index(robot)
         params_file = LaunchConfiguration(robot['name'] + '_params_file')
 
         group = GroupAction([
@@ -203,16 +203,14 @@ def generate_launch_description():
 
     # Declare the launch options
     
-    
-    ld.add_action(declare_map_yaml_cmd)
     ld.add_action(declare_robot1_params_file_cmd)
     ld.add_action(declare_robot2_params_file_cmd)
     ld.add_action(declare_bt_xml_cmd)
     ld.add_action(declare_autostart_cmd)
-
     ld.add_action(declare_rviz_config_file_cmd)
     ld.add_action(declare_use_robot_state_pub_cmd)
     ld.add_action(declare_use_rviz_cmd)
+    ld.add_action(declare_map_yaml_cmd)
     ld.add_action(declare_simulator_cmd)
     ld.add_action(declare_world_cmd)
 
@@ -221,6 +219,7 @@ def generate_launch_description():
 
     for spawn_robot_cmd in spawn_robots_cmds:
         ld.add_action(spawn_robot_cmd)
+        sleep(1)
 
     for simulation_instance_cmd in nav_instances_cmds:
         ld.add_action(simulation_instance_cmd)
