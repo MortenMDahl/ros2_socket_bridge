@@ -180,7 +180,7 @@ local_costmap:
         mark_threshold: 0
         observation_sources: scan
         scan:
-          topic: /robot1/scan
+          topic: /robot3/scan
           max_obstacle_height: 2.0
           clearing: True
           marking: True
@@ -212,7 +212,7 @@ global_costmap:
         enabled: True
         observation_sources: scan
         scan:
-          topic: /robot1/scan
+          topic: /robot3/scan
           max_obstacle_height: 2.0
           clearing: True
           marking: True
@@ -283,3 +283,4 @@ recoveries_server:
 robot_state_publisher:
   ros__parameters:
     use_sim_time: True
+
