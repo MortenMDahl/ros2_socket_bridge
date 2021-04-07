@@ -31,10 +31,10 @@ import argparse
 def generate_launch_description(argv=sys.argv[1:]):
 
     # Can be anything to fit your desired method of naming. Must match with client.
-    name1 = 'fleet1/robot1'
-    name2 = 'fleet1/robot2'
-    name3 = 'fleet1/robot3'
-    name4 = 'fleet1/robot4'
+    name1 = 'robot1'
+    name2 = 'robot2'
+    name3 = 'robot3'
+    name4 = 'robot4'
 
     server_port1 = '13001'
     server_port2 = '13002'
