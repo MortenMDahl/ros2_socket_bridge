@@ -15,6 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from timeit import default_timer as timer
+
 import rclpy
 import pickle
 from cryptography.fernet import Fernet
@@ -50,11 +52,20 @@ class BridgeObject:
         return getattr(sys.modules[__name__], classname)
 
     def callback(self, data):
+        try:
+            file = open('s_e/{}.txt'.format(self.name), 'a')
+        except FileNotFoundError:
+            file = open('s_e/{}.txt'.format(self.name.split('/')[0] + "|" +self.name.split('/')[-1]),'a')
+        start = timer()
         serialized_msg = pickle.dumps(data)
+        middle = timer()
         msg_encrypted = self.fernet.encrypt(serialized_msg)
+        end = timer()
         if self.protocol == self.UDP_PROTOCOL:
             self.soc.sendto(msg_encrypted, self.address)
+            file.write(str(middle-start) +"|"+ str(end-middle) +"|"+ str(end-start) + "\n")
 
         elif self.protocol == self.TCP_PROTOCOL:
             msg_encrypted += b"_split_"
             self.soc.send(msg_encrypted)
+            file.write(str(middle-start) +"|"+ str(end-middle) +"|"+ str(end-start) + "\n")

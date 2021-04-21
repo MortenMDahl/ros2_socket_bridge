@@ -385,10 +385,20 @@ class ServerNode(Node):
                 # Decrypt with Fernet and deserialize with pickle
                 # Testing time it takes to serialize and encrypt.
                 try:
+                    try:
+                        file = open('data/{}.txt'.format(obj.name),'a')
+                    except FileNotFoundError:
+                        file = open('data/{}.txt'.format(obj.name.split('/')[0] + "|" +obj.name.split('/')[-1]),'a')
                     data_encrypted, addr = obj.soc.recvfrom(self.BUFFER_SIZE)
+                    start = timer()
                     data = self.fernet.decrypt(data_encrypted)
+                    middle = timer()
                     msg = pickle.loads(data)
+                    end = timer()
                     obj.publisher.publish(msg)
+                    warn = 1
+                    file.write(str(middle-start) +"|"+ str(end-middle) +"|"+ str(end-start) + "\n")
+                    #file.close()
                     if stopped:
                         print(obj.name, "reinitialized.")
                         stopped = False

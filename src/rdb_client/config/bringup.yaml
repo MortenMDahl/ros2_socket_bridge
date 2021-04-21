@@ -10,8 +10,8 @@ client_node:
     # between the server and client.
     # ---------------------------------------------------------------------------
 
-    server_ip: '192.168.10.120'
-    server_port: 3001
+    server_ip: '127.0.0.1'
+    server_port: 3000
 
 
     # ---------------------------------------------------------------------------
@@ -64,14 +64,14 @@ client_node:
     #transmit_qos: ['qos_profile_system_default', 'qos_profile_system_default']
 
 
-    receive_topics: ['initialpose', 'goal_pose']
-    receive_msg_types: ['PoseWithCovarianceStamped', 'PoseStamped']
-    receive_ports: [12000, 12001]
-    receive_protocols: ['TCP', 'TCP']
-    receive_qos: ['qos_profile_system_default', 'qos_profile_system_default']
+    receive_topics: ['initialpose', 'goal_pose', 'cmd_vel']
+    receive_msg_types: ['PoseWithCovarianceStamped', 'PoseStamped', 'Twist']
+    receive_ports: [12000,12001,12002]
+    receive_protocols: ['TCP', 'TCP', 'UDP']
+    receive_qos: ['qos_profile_system_default', 'qos_profile_system_default', 'qos_profile_system_default']
 
-    transmit_topics: ['scan']
-    transmit_msg_types: ['LaserScan']
-    transmit_ports: [12002, 12003]
-    transmit_protocols: ['UDP']
-    transmit_qos: ['qos_profile_sensor_data']
+    transmit_topics: ['tf', 'tf_static', 'scan', 'global_costmap/costmap', 'plan', 'local_costmap/costmap', 'local_costmap/published_footprint', 'waypoints']
+    transmit_msg_types: ['TFMessage', 'TFMessage', 'LaserScan', 'OccupancyGrid', 'Path', 'OccupancyGrid', 'PolygonStamped', 'MarkerArray']
+    transmit_ports: [12003, 12004, 12005, 12006, 12007, 12008, 12009, 12010]
+    transmit_protocols: ['UDP', 'UDP', 'UDP', 'TCP', 'UDP', 'UDP', 'UDP', 'UDP']
+    transmit_qos: ['qos_profile_sensor_data', 'qos_profile_sensor_data', 'qos_profile_sensor_data', 'qos_profile_sensor_data', 'qos_profile_sensor_data', 'qos_profile_sensor_data', 'qos_profile_sensor_data', 'qos_profile_sensor_data']
