@@ -44,10 +44,15 @@ from rdb_client.bridge_objects import *
 
 
 class ClientNode(Node):
-    def __init__(self, robot_name, encryption_key, use_name):
+    def __init__(self, robot_name, encryption_key, use_name, encrypt):
         super().__init__("client_node")
         self.robot_name = str(robot_name)
         self.name = robot_name + "_client_node"
+
+        if encrypt.lower() == "true":
+            self.encrypt = True
+        else:
+            self.encrypt = False
 
         if use_name.lower() == "true":
             self.use_name = True
@@ -505,11 +510,12 @@ def main(argv=sys.argv[1:]):
     parser.add_argument("-name", "--robot_name")
     parser.add_argument("-key", "--encryption_key")
     parser.add_argument("-usename", "--use_name")
+    parser.add_argument("-encrypt", "--use_encryption")
     args = parser.parse_args(remove_ros_args(args=argv))
 
     # Initialize rclpy and create node object
     rclpy.init(args=argv)
-    client_node = ClientNode(args.robot_name, args.encryption_key, args.use_name)
+    client_node = ClientNode(args.robot_name, args.encryption_key, args.use_name, args.use_encryption)
 
     # Spin the node
     rclpy.spin(client_node)

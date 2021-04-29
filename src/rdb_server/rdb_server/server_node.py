@@ -46,9 +46,14 @@ from rdb_server.bridge_objects import *
 
 
 class ServerNode(Node):
-    def __init__(self, robot_name, server_port, encryption_key, use_name):
+    def __init__(self, robot_name, server_port, encryption_key, use_name, encrypt):
         super().__init__("server_node")
         self.robot_name = str(robot_name)
+
+        if encrypt.lower() == "true":
+            self.encrypt = True
+        else:
+            self.encrypt = False
 
         if use_name.lower() == "true":
             self.use_name = True
@@ -80,12 +85,12 @@ class ServerNode(Node):
         self.DIRECTION_TRANSMIT = "transmit"
 
         self.INIT_COMPLETE = False
-        
-		#Quite a large buffer size (2^15, 32K), but it is required for redundancy.
-		#If you get a serializing error, this is probably the cause. Too small of buffer size
-		#causes the message received to be uncomplete and the deserializer gets error converting
-		#wrong types. This occurs when using TCP due to streaming of data. The buffer is sent if it gets filled up.
-		
+
+        #Quite a large buffer size (2^15, 32K), but it is required for redundancy.
+        #If you get a serializing error, this is probably the cause. Too small of buffer size
+        #causes the message received to be uncomplete and the deserializer gets error converting
+        #wrong types. This occurs when using TCP due to streaming of data. The buffer is sent if it gets filled up.
+
         self.BUFFER_SIZE = 32768
 
         # Makes socket object and waits for connection
@@ -230,6 +235,7 @@ class ServerNode(Node):
                                 self.transmit_ports[i],
                                 self.transmit_protocols[i],
                                 self.transmit_qos[i],
+                                self.encrypt
                             )
                         )
                     except IndexError:  # Any index problems should already be handled on the client. This fixes an empty list of topics.
@@ -246,6 +252,7 @@ class ServerNode(Node):
                                 self.receive_ports[j],
                                 self.receive_protocols[j],
                                 self.receive_qos[j],
+                                self.encrypt
                             )
                         )
                     except IndexError:
@@ -385,10 +392,21 @@ class ServerNode(Node):
                 # Decrypt with Fernet and deserialize with pickle
                 # Testing time it takes to serialize and encrypt.
                 try:
-                    data_encrypted, addr = obj.soc.recvfrom(self.BUFFER_SIZE)
-                    data = self.fernet.decrypt(data_encrypted)
+                    #try:
+                        #file = open('set_size/dd/6k/{}.txt'.format(obj.name),'a')
+                    #except FileNotFoundError:
+                       # file = open('set_size/dd/6k/{}.txt'.format(obj.name.split('/')[0] + "|" +obj.name.split('/')[-1]),'a')
+                    data, addr = obj.soc.recvfrom(self.BUFFER_SIZE)
+                    #start = timer()
+                    if self.encrypt:
+                        data = self.fernet.decrypt(data)
+                    #middle = timer()
                     msg = pickle.loads(data)
+                    #end = timer()
                     obj.publisher.publish(msg)
+                    warn = 1
+                    #file.write(str(middle-start) +"|"+ str(end-middle) +"|"+ str(end-start) + "\n")
+                    #file.close()
                     if stopped:
                         print(obj.name, "reinitialized.")
                         stopped = False
@@ -411,7 +429,7 @@ class ServerNode(Node):
                     if i >= 3:
                         print("Received too many invalid tolkens. Shutting down.")
                         rclpy.shutdown()
-                
+
 
         elif obj.protocol == self.TCP_PROTOCOL:
             while not obj.connected:
@@ -485,12 +503,13 @@ def main(argv=sys.argv[1:]):
     parser.add_argument("-p", "--server_port")
     parser.add_argument("-key", "--encryption_key")
     parser.add_argument("-usename", "--use_name")
+    parser.add_argument("-encrypt", "--use_encryption")
     args = parser.parse_args(remove_ros_args(args=argv))
 
     # Initialize rclpy and create node object
     rclpy.init(args=argv)
     server_node = ServerNode(
-        args.robot_name, args.server_port, args.encryption_key, args.use_name
+        args.robot_name, args.server_port, args.encryption_key, args.use_name, args.use_encryption
     )
 
     # Spin the node
@@ -504,4 +523,4 @@ def main(argv=sys.argv[1:]):
 
 
 if __name__ == "__main__":
-    main()
+    main() 

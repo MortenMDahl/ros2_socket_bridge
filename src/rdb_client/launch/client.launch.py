@@ -36,6 +36,9 @@ def generate_launch_description(argv=sys.argv[1:]):
     # Whether or not to use robot name as a prefix for incoming topics
     use_name = 'false'
 
+    # Whether or not to encrypt and decrypt incoming and outgoing messages
+    use_encryption = 'false'
+
     # Any 32 url-safe base64-encoded bytes passed in as a string.
     # This can be generated using the generate_key.py script in the main folder.
     # Must match with server key.
@@ -60,6 +63,6 @@ def generate_launch_description(argv=sys.argv[1:]):
             name="client_node",
             output="screen",
             emulate_tty=True,
-            arguments=['-name', name, '-key', encryption_key, '-usename', use_name],
+            arguments=['-name', name, '-key', encryption_key, '-usename', use_name, '-encrypt', use_encryption],
             parameters=[param_dir]),
  ])

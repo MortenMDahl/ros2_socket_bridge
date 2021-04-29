@@ -14,14 +14,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from timeit import default_timer as timer
+
 import rclpy
 import pickle
 from cryptography.fernet import Fernet
 
+import sys
 
 class BridgeObject:
     def __init__(
-        self, direction, encryption_key, name, msg_type, port, protocol, qos=10
+        self, direction, encryption_key, name, msg_type, port, protocol, qos=10, encrypt = True
     ):
         self.direction = direction
         self.name = name
@@ -30,6 +34,7 @@ class BridgeObject:
         self.protocol = protocol
         self.qos = qos
         self.fernet = Fernet(encryption_key)
+        self.encrypt = encrypt
 
         # Socket variables
         self.soc = None
@@ -47,10 +52,24 @@ class BridgeObject:
         return getattr(sys.modules[__name__], classname)
 
     def callback(self, data):
+        #try:
+        #    file = open('set_size/se/6k/{}.txt'.format(self.name), 'a')
+        #except FileNotFoundError:
+        #    file = open('set_size/se/4k/{}.txt'.format(self.name.split('/')[0] + "|" +self.name.split('/')[-1]),'a')
+        #start = timer()
         serialized_msg = pickle.dumps(data)
-        msg_encrypted = self.fernet.encrypt(serialized_msg)
+        #print(sys.getsizeof(serialized_msg))
+        #middle = timer()
+        if self.encrypt:
+            msg = self.fernet.encrypt(serialized_msg)
+        else:
+            msg = serialized_msg
+        #end = timer()
         if self.protocol == self.UDP_PROTOCOL:
-            self.soc.sendto(msg_encrypted, self.address)
+            self.soc.sendto(msg, self.address)
+            #file.write(str(middle-start) +"|"+ str(end-middle) +"|"+ str(end-start) + "\n")
+
         elif self.protocol == self.TCP_PROTOCOL:
-            msg_encrypted += b"_split_"
-            self.connection.send(msg_encrypted)
+            msg += b"_split_"
+            self.soc.send(msg)
+            #file.write(str(middle-start) +"|"+ str(end-middle) +"|"+ str(end-start) + "\n")
