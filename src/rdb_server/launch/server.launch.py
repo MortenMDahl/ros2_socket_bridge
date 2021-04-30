@@ -38,7 +38,7 @@ def generate_launch_description(argv=sys.argv[1:]):
     use_name = 'false'
 
     # Whether or not to encrypt and decrypt incoming and outgoing messages
-    use_encryption = 'false'
+    use_encryption = 'true'
 
     # Any 32 url-safe base64-encoded bytes object passed in as a string.
     # This can be generated using the generate_key.py script in the main folder.

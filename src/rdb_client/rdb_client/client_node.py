@@ -64,6 +64,7 @@ class ClientNode(Node):
 
         self.receive_objects = []
         self.transmit_objects = []
+        self.threads = []
 
         self.UDP_PROTOCOL = "UDP"
         self.TCP_PROTOCOL = "TCP"
@@ -72,6 +73,7 @@ class ClientNode(Node):
         self.BUFFER_SIZE = 32768
 
         connected = False
+        self.close_threads = False
 
         # Get parameters from config file
         self.declare_parameter("server_ip")
@@ -102,6 +104,10 @@ class ClientNode(Node):
         self.declare_parameter("receive_qos")
         self.receive_qos = []
         receive_qos_temp = self.get_parameter("receive_qos").value
+
+        self.shutdown_subscriber = self.create_subscription(
+        String, "shutdown", self.shutdown, 10
+        )
 
         # Checks to see if the user has given the right amount of settings.
         try:
@@ -291,6 +297,12 @@ class ClientNode(Node):
         self.clientSocket.send(init_msg.encode("utf-8"))
         connection_response = self.clientSocket.recv(2048)
 
+        shutdown_thread = threading.Thread(
+                        target=self.shutdown_monitor_thread
+                    )
+        shutdown_thread.start()
+        self.thread_objects.append(shutdown_thread)
+
         connection_response = connection_response.decode("utf-8")
 
         while connection_response != None:
@@ -308,7 +320,7 @@ class ClientNode(Node):
                             obj.soc.settimeout(15)
                             obj.soc.setsockopt(
                                 socket.SOL_SOCKET, socket.SO_RCVBUF, 1048576
-                            )  # Øke buffer størrelse?
+                            ) 
                             obj.soc.sendto(b"initialize_channel", obj.address)
                             print(obj.name + " establishing connection...")
                             time.sleep(0.5)
@@ -380,9 +392,11 @@ class ClientNode(Node):
                             )
 
                     # Creates thread for handling incoming messages.
-                    threading.Thread(
+                    thread = threading.Thread(
                         target=self.receive_connection_thread, args=[obj]
-                    ).start()
+                    )
+                    self.threads.append(thread)
+                    thread.start()
                     time.sleep(1)
                 print("Receiving connections established!")
 
@@ -390,6 +404,30 @@ class ClientNode(Node):
                 print(connection_response)
 
             connection_response = None
+
+    def shutdown(self, data):
+        if data.data == "shutdown":
+            print("Shutdown received from topic\nPlease wait for connections to close...")
+            self.close_threads = True
+            for thread in self.threads:
+                    thread.join()
+            self.clientSocket.send(b'shutdown')
+            print('Sent shutdown to server.')
+        else:
+            pass
+
+    def shutdown_monitor_thread(self):
+        while not self.close_threads:
+            try:
+                data = self.clientSocket.recv(2048)
+                if data == b'shutdown':
+                    print('Received shutdown from server.')
+                    print('Please wait for connections to close...')
+                    self.close_threads = True
+                else:
+                    continue
+            except socket.timeout:
+                continue
 
     def receive_connection_thread(self, obj):
         warn = 1
@@ -432,7 +470,10 @@ class ClientNode(Node):
                         stopped = True
                     continue
                 try:
-                    data = self.fernet.decrypt(data_encrypted)
+                    if self.encrypt:
+                        data = self.fernet.decrypt(data_encrypted)
+                    else:
+                        data = data_encrypted
                     msg = pickle.loads(data)
                     obj.publisher.publish(msg)
                     warn = 0
@@ -453,7 +494,7 @@ class ClientNode(Node):
 
             print(str(obj.name) + " connected!")
 
-            while obj.connected:
+            while obj.connected and not self.close_threads:
                 try:
                     data_stream = obj.soc.recv(1024)
                     warn = 1
@@ -483,7 +524,10 @@ class ClientNode(Node):
                     buf = split[1].encode("utf-8")
 
                 try:
-                    data = self.fernet.decrypt(data_encrypted)
+                    if self.encrypt:
+                        data = self.fernet.decrypt(data_encrypted)
+                    else:
+                        data = data_encrypted
                     msg = pickle.loads(data)
                     if msg != None:
                         obj.publisher.publish(msg)
@@ -498,9 +542,12 @@ class ClientNode(Node):
                         print("Received too many invalid tolkens. Shutting down.")
                         rclpy.shutdown()
 
+        print('Closing', obj.name)
+        obj.soc.shutdown()
+        self.close_threads = False
+
     def str_to_class(self, classname):
         return getattr(sys.modules[__name__], classname)
-
 
 def main(argv=sys.argv[1:]):
     # Get parameters from launch file

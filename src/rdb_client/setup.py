@@ -25,7 +25,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'client = rdb_client.client_node:main'
+            'client = rdb_client.client_node:main',
+            'shutdown = rdb_client.shutdown:main',
         ],
     },
 )

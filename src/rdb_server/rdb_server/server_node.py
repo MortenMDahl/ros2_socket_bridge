@@ -55,6 +55,8 @@ class ServerNode(Node):
         else:
             self.encrypt = False
 
+        print(self.encrypt)
+
         if use_name.lower() == "true":
             self.use_name = True
         else:
@@ -78,6 +80,8 @@ class ServerNode(Node):
         self.receive_connection_list = []
         self.publisher_list = []
         self.subscriber_list = []
+        self.threads = []
+        self.thread_counter = 0
 
         self.UDP_PROTOCOL = "UDP"
         self.TCP_PROTOCOL = "TCP"
@@ -85,7 +89,7 @@ class ServerNode(Node):
         self.DIRECTION_TRANSMIT = "transmit"
 
         self.INIT_COMPLETE = False
-
+        self.close_threads = False
         #Quite a large buffer size (2^15, 32K), but it is required for redundancy.
         #If you get a serializing error, this is probably the cause. Too small of buffer size
         #causes the message received to be uncomplete and the deserializer gets error converting
@@ -114,7 +118,7 @@ class ServerNode(Node):
 
         # Shutdown handler
         self.shutdown_subscriber = self.create_subscription(
-            String, "shutdown", self.shutdown, qos_profile_sensor_data
+            String, "shutdown", self.shutdown, 10
         )
 
         # Start thread which accept incoming connections
@@ -137,7 +141,6 @@ class ServerNode(Node):
 
         while rclpy.ok():
             try:
-
                 (
                     self.server,
                     address,
@@ -278,7 +281,7 @@ class ServerNode(Node):
                             obj.soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                             obj.soc.settimeout(15)
                             obj.soc.setsockopt(
-                                socket.SOL_SOCKET, socket.SO_RCVBUF, 1048576
+                                socket.SOL_SOCKET, socket.SO_REUSEADDR, 1048576
                             )
                             obj.soc.bind((self.server_ip, int(obj.port)))
                         except Exception as e:
@@ -287,6 +290,7 @@ class ServerNode(Node):
                                 obj.name,
                                 " to the requested address - ",
                                 e,
+                                "({}:{})".format(self.server_ip, int(obj.port))
                             )
 
                     elif obj.protocol == self.TCP_PROTOCOL:
@@ -308,9 +312,12 @@ class ServerNode(Node):
                             )
 
                     # Creates thread for connecting the sockets and handling incoming data based on protocol.
-                    threading.Thread(
+                    thread = threading.Thread(
                         target=self.receive_connection_thread, args=[obj]
-                    ).start()
+                    )
+                    self.threads.append(thread)
+                    thread.start()
+                    self.thread_counter += 1
                 print("Receiving connections established!")
 
                 for obj in self.transmit_objects:
@@ -359,15 +366,24 @@ class ServerNode(Node):
             else:
                 print("Error: robot_name does not match with client.")
         else:
-            # What to do if message is not init
-            # "Disconnect" message?
+            # Shutdown closes sockets and ends threads
+            # If a shutdown is received from the client
+            if data[0] == 'shutdown':
+                print('Shutdown received from client\nPlease wait for connections to close..."')
+                self.close_threads = True
+                for thread in self.threads:
+                    thread.join()
 
             print(str(data))
 
     def shutdown(self, data):
         if data.data == "shutdown":
-            print("Shutdown received")
-            rclpy.shutdown()
+            print("Shutdown received from topic\nPlease wait for connections to close...")
+            self.close_threads = True
+            for thread in self.threads:
+                    thread.join()
+            self.server.send(b'shutdown')
+            print('Sent shutdown to client.')
         else:
             pass
 
@@ -388,7 +404,7 @@ class ServerNode(Node):
 
             print(str(obj.name) + " connected!")
 
-            while obj.connected:
+            while obj.connected and not self.close_threads:
                 # Decrypt with Fernet and deserialize with pickle
                 # Testing time it takes to serialize and encrypt.
                 try:
@@ -429,6 +445,19 @@ class ServerNode(Node):
                     if i >= 3:
                         print("Received too many invalid tolkens. Shutting down.")
                         rclpy.shutdown()
+                except OSError as e:
+                    print('OSError:', e)
+            
+            self.thread_counter -= 1
+            # Resets incoming and outgoing connections on shutdown.
+            # Server is ready for new connection from client.
+            if self.thread_counter == 0:
+                self.close_threads = False
+                self.receive_objects = []
+                self.transmit_objects = []
+            print('Closing', obj.name)
+            obj.soc.close()
+
 
 
         elif obj.protocol == self.TCP_PROTOCOL:
@@ -439,7 +468,7 @@ class ServerNode(Node):
 
             print(str(obj.name) + " connected!")
 
-            while obj.connected:
+            while obj.connected and not self.close_threads:
                 try: 
                     data_stream = obj.connection.recv(1024)
                     warn = 1
@@ -487,6 +516,11 @@ class ServerNode(Node):
                         warn += 1
                     if warn == 3:
                         print("Stopping InvalidTolken warning for " + obj.name)
+
+            self.close_threads = False
+            print('Closing', obj.name)
+            obj.soc.shutdown()
+            
 
     # Converts sting to class.
     # Only works if said class is defined. Remember to import your own custom message types if used.
