@@ -42,14 +42,14 @@ import pickle
 import cryptography
 from cryptography.fernet import Fernet
 
-from rdb_server.bridge_objects_bluetooth import *
+from rdb_server.bridge_objects import *
 
 # from .rdb_server.msg import * # Imports user-made message types.
 
 
 class ServerNode(Node):
     def __init__(self, robot_name, server_port, encryption_key, use_name, encrypt):
-        super().__init__("server_bluetooth_node")
+        super().__init__("server_node")
         self.robot_name = str(robot_name)
 
         if encrypt.lower() == "true":
@@ -85,6 +85,10 @@ class ServerNode(Node):
         self.threads = []
         self.thread_counter = 0
 
+        self.UDP_PROTOCOL = "UDP"
+        self.TCP_PROTOCOL = "TCP"
+        self.BLUETOOTH = "BLUETOOTH"
+        
         self.DIRECTION_RECEIVE = "receive"
         self.DIRECTION_TRANSMIT = "transmit"
 
@@ -97,10 +101,12 @@ class ServerNode(Node):
 
         self.BUFFER_SIZE = 32768
 
-        # Makes socket object and waits for connection
-
-        self.serverSocket = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
-        self.serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        # Makes socket object and waits for connection. Bluetooth if ":" is in the address.
+        if ":" in self.server_ip:
+            self.serverSocket = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+        else:
+            self.serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         try:
             self.serverSocket.bind((self.server_ip, self.server_port))
@@ -274,7 +280,7 @@ class ServerNode(Node):
                         obj.publisher = self.create_publisher(
                             self.str_to_class(obj.msg_type), obj.name, obj.qos
                         )
-                    '''
+
                     if obj.protocol == self.UDP_PROTOCOL:
                         # Creates an UDP socket
                         try:
@@ -292,22 +298,40 @@ class ServerNode(Node):
                                 e,
                                 "({}:{})".format(self.server_ip, int(obj.port)),
                             )
-                    '''
-                    try:
-                        obj.soc = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
-                        obj.soc.settimeout(15)
-                        obj.soc.setsockopt(
-                            socket.SOL_SOCKET, socket.SO_REUSEADDR, self.BUFFER_SIZE
-                        )
-                        obj.soc.bind((self.server_ip, int(obj.port)))
-                        obj.soc.listen(3)
-                    except Exception as e:
-                        print(
-                            "Error binding ",
-                            obj.name,
-                            " to the requested address -",
-                            e,
-                        )
+
+                    elif obj.protocol == self.TCP_PROTOCOL:
+                        # Creates a TCP socket
+                        try:
+                            obj.soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                            obj.soc.settimeout(15)
+                            obj.soc.setsockopt(
+                                socket.SOL_SOCKET, socket.SO_REUSEADDR, self.BUFFER_SIZE
+                            )
+                            obj.soc.bind((self.server_ip, int(obj.port)))
+                            obj.soc.listen(3)
+                        except Exception as e:
+                            print(
+                                "Error binding ",
+                                obj.name,
+                                " to the requested address -",
+                                e,
+                            )
+                    elif obj.protocol == self.BLUETOOTH:
+                        try:
+                            obj.soc = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+                            obj.soc.settimeout(15)
+                            obj.soc.setsockopt(
+                                socket.SOL_SOCKET, socket.SO_REUSEADDR, self.BUFFER_SIZE
+                            )
+                            obj.soc.bind((self.server_ip, int(obj.port)))
+                            obj.soc.listen(3)
+                        except Exception as e:
+                            print(
+                                "Error binding ",
+                                obj.name,
+                                " to the requested address -",
+                                e,
+                            )
 
                     # Creates thread for connecting the sockets and handling incoming data based on protocol.
                     thread = threading.Thread(
@@ -319,7 +343,6 @@ class ServerNode(Node):
                 print("Receiving connections established!")
 
                 for obj in self.transmit_objects:
-                    '''
                     if obj.protocol == self.UDP_PROTOCOL:
                         # Creates an UDP socket
                         try:
@@ -339,21 +362,39 @@ class ServerNode(Node):
                             print(
                                 "Error binding ", obj.name, " to requested address: ", e
                             )
-                    '''
-                    try:
-                        obj.soc = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
-                        obj.soc.settimeout(15)
-                        obj.soc.setsockopt(
-                            socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
-                        )
-                        obj.soc.bind((self.server_ip, int(obj.port)))
-                        obj.soc.listen(3)
-                        obj.connection, obj.address = obj.soc.accept()
-                        time.sleep(0.5)
-                    except Exception as e:
-                        print(
-                            "Error binding ", obj.name, " to requested address: ", e
-                        )
+
+                    elif obj.protocol == self.TCP_PROTOCOL:
+                        # Creates a TCP socket
+                        try:
+                            obj.soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                            obj.soc.settimeout(15)
+                            obj.soc.setsockopt(
+                                socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
+                            )
+                            obj.soc.bind((self.server_ip, int(obj.port)))
+                            obj.soc.listen(3)
+                            obj.connection, obj.address = obj.soc.accept()
+                            time.sleep(0.5)
+                        except Exception as e:
+                            print(
+                                "Error binding ", obj.name, " to requested address: ", e
+                            )
+                    elif obj.protocol == self.BLUETOOTH:
+                        # Creates a TCP socket
+                        try:
+                            obj.soc = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+                            obj.soc.settimeout(15)
+                            obj.soc.setsockopt(
+                                socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
+                            )
+                            obj.soc.bind((self.server_ip, int(obj.port)))
+                            obj.soc.listen(3)
+                            obj.connection, obj.address = obj.soc.accept()
+                            time.sleep(0.5)
+                        except Exception as e:
+                            print(
+                                "Error binding ", obj.name, " to requested address: ", e
+                            )
                     obj.subscriber = self.create_subscription(
                         self.str_to_class(obj.msg_type), obj.name, obj.callback, obj.qos
                     )
@@ -392,7 +433,6 @@ class ServerNode(Node):
         warn = 1
         i = 0
         stopped = False
-        '''
         if obj.protocol == self.UDP_PROTOCOL:
             while not obj.connected:
                 try:
@@ -441,6 +481,65 @@ class ServerNode(Node):
                 except OSError as e:
                     print("OSError:", e)
 
+            
+
+        elif obj.protocol == self.TCP_PROTOCOL:
+            while not obj.connected:
+                obj.connection, obj.address = obj.soc.accept()
+                obj.connected = True
+                buf = b""
+
+            print(str(obj.name) + " connected!")
+
+            while obj.connected and not self.close_threads:
+                try:
+                    data_stream = obj.connection.recv(1024)
+                    warn = 1
+                    if stopped:
+                        print(obj.name, "reinitialized.")
+                        stopped = False
+                except socket.timeout:
+                    if warn < 5:
+                        print("No data received from", obj.name, "| Warning #", warn)
+                    warn += 1
+                    if warn == 5:
+                        print("\n===============================")
+                        print("Stopping warning for", obj.name)
+                        print("===============================\n")
+                        warn = 20
+                        stopped = True
+                    continue
+
+                buf += data_stream
+                if b"_split_" not in buf:
+                    continue
+                else:
+                    buf_decoded = buf.decode()
+                    split = buf_decoded.split("_split_")
+                    data_encrypted = split[0].encode("utf-8")
+                    buf = split[1].encode("utf-8")
+
+                try:
+                    data = self.fernet.decrypt(data_encrypted)
+                    msg = pickle.loads(data)
+                    if msg != None:
+                        obj.publisher.publish(msg)
+                        warn = 1
+                    else:
+                        continue
+
+                except cryptography.fernet.InvalidToken:
+                    i += 1
+                    if (i == 50) & (warn < 3):
+                        print(obj.name + " - Received multiple invalid tolkens.")
+                        print(
+                            "Could be caused by TCP message size or invalid encryption key."
+                        )
+                        i = 0
+                        warn += 1
+                    if warn == 3:
+                        print("Stopping InvalidTolken warning for " + obj.name)
+
             self.thread_counter -= 1
             # Resets incoming and outgoing connections on shutdown.
             # Server is ready for new connection from client.
@@ -448,66 +547,9 @@ class ServerNode(Node):
                 self.close_threads = False
                 self.receive_objects = []
                 self.transmit_objects = []
-            print("Closing", obj.name)
-            obj.soc.close()
-        '''
-        while not obj.connected:
-            obj.connection, obj.address = obj.soc.accept()
-            obj.connected = True
-            buf = b""
-
-        print(str(obj.name) + " connected!")
-
-        while obj.connected and not self.close_threads:
-            try:
-                data_stream = obj.connection.recv(1024)
-                warn = 1
-                if stopped:
-                    print(obj.name, "reinitialized.")
-                    stopped = False
-            except socket.timeout:
-                if warn < 5:
-                    print("No data received from", obj.name, "| Warning #", warn)
-                warn += 1
-                if warn == 5:
-                    print("\n===============================")
-                    print("Stopping warning for", obj.name)
-                    print("===============================\n")
-                    warn = 20
-                    stopped = True
-                continue
-
-            buf += data_stream
-            if b"_split_" not in buf:
-                continue
-            else:
-                buf_decoded = buf.decode()
-                split = buf_decoded.split("_split_")
-                data_encrypted = split[0].encode("utf-8")
-                buf = split[1].encode("utf-8")
-
-            try:
-                data = self.fernet.decrypt(data_encrypted)
-                msg = pickle.loads(data)
-                if msg != None:
-                    obj.publisher.publish(msg)
-                    warn = 1
-                else:
-                    continue
-
-            except cryptography.fernet.InvalidToken:
-                i += 1
-                if (i == 50) & (warn < 3):
-                    print(obj.name + " - Received multiple invalid tolkens.")
-                    print(
-                        "Could be caused by TCP message size or invalid encryption key."
-                    )
-                    i = 0
-                    warn += 1
-                if warn == 3:
-                    print("Stopping InvalidTolken warning for " + obj.name)
-
-            self.close_threads = False
+                print("Closing", obj.name)
+                obj.soc.close()
+                self.close_threads = False
             print("Closing", obj.name)
             obj.soc.shutdown()
 

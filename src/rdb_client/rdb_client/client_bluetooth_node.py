@@ -40,14 +40,14 @@ import pickle
 import cryptography
 from cryptography.fernet import Fernet
 
-from rdb_client.bridge_objects_bluetooth import *
+from rdb_client.bridge_objects import *
 
 # from rdb_client.msg import * # Imports user-made message types
 
 
-class ClientBluetoothNode(Node):
+class ClientNode(Node):
     def __init__(self, robot_name, encryption_key, use_name, encrypt):
-        super().__init__("client_bluetooth_node")
+        super().__init__("client_node")
         self.robot_name = str(robot_name)
         self.name = robot_name + "_client_node"
 
@@ -67,6 +67,10 @@ class ClientBluetoothNode(Node):
         self.receive_objects = []
         self.transmit_objects = []
         self.threads = []
+
+        self.UDP_PROTOCOL = "UDP"
+        self.TCP_PROTOCOL = "TCP"
+        self.BLUETOOTH = "BLUETOOTH"
 
         self.DIRECTION_RECEIVE = "receive"
         self.DIRECTION_TRANSMIT = "transmit"
@@ -276,8 +280,8 @@ class ClientBluetoothNode(Node):
         except TypeError:
             pass
 
-        # Create a bluetooth socket object and connect to server
-        self.clientSocket = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+        # Create a TCP socket object and connect to server
+        self.clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.clientSocket.setsockopt(
             socket.SOL_SOCKET, socket.SO_REUSEADDR, self.BUFFER_SIZE
         )
@@ -289,7 +293,7 @@ class ClientBluetoothNode(Node):
 
         while not connected:
             try:
-                self.clientSocket.connect((self.server_ip, self.server_port))
+                self.clientSocket.connect_ex((self.server_ip, self.server_port))
                 connected = True
             except socket.error as e:
                 pass
@@ -314,7 +318,6 @@ class ClientBluetoothNode(Node):
                 print("Establishing connections...")
                 for obj in self.transmit_objects:
                     obj.address = (self.server_ip, int(obj.port))
-                    '''
                     if obj.protocol == self.UDP_PROTOCOL:
                         try:
                             obj.soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -327,21 +330,37 @@ class ClientBluetoothNode(Node):
                             time.sleep(0.5)
                         except Exception as e:
                             print("Error creating UDP socket for ", obj.name, ": ", e)
-                    '''
-                    try:
-                        obj.soc = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
-                        obj.soc.settimeout(15)
-                        obj.soc.setsockopt(
-                            socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
-                        )
-                        obj.soc.connect(obj.address)
-                    except Exception as e:
-                        print(
-                            "Error connecting ",
-                            obj.name,
-                            " to requested address: ",
-                            e,
-                        )
+
+                    elif obj.protocol == self.TCP_PROTOCOL:
+                        try:
+                            obj.soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                            obj.soc.settimeout(15)
+                            obj.soc.setsockopt(
+                                socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
+                            )
+                            obj.soc.connect(obj.address)
+                        except Exception as e:
+                            print(
+                                "Error connecting ",
+                                obj.name,
+                                " to requested address: ",
+                                e,
+                            )
+                    elif obj.protocol == self.BLUETOOTH:
+                        try:
+                            obj.soc = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+                            obj.soc.settimeout(15)
+                            obj.soc.setsockopt(
+                                socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
+                            )
+                            obj.soc.connect(obj.address)
+                        except Exception as e:
+                            print(
+                                "Error connecting ",
+                                obj.name,
+                                " to requested address: ",
+                                e,
+                            )
                     # Creates a subscriber for each object with its appropriate callback function based on protocol.
                     print(obj.name + " connected!")
                     obj.subscriber = self.create_subscription(
@@ -361,7 +380,7 @@ class ClientBluetoothNode(Node):
                         obj.publisher = self.create_publisher(
                             self.str_to_class(obj.msg_type), obj.name, obj.qos
                         )
-                    '''
+
                     if obj.protocol == self.UDP_PROTOCOL:
                         try:
                             obj.soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -371,24 +390,43 @@ class ClientBluetoothNode(Node):
                             )
                         except Exception as e:
                             print("Error creating UDP socket for ", obj.name, ": ", e)
-                    '''
-                    try:
-                        obj.soc = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
-                        obj.soc.settimeout(15)
-                        obj.soc.setsockopt(
-                            socket.SOL_SOCKET,
-                            socket.SO_REUSEADDR,
-                            self.BUFFER_SIZE * 2 * 2,
-                        )
-                        obj.soc.connect((self.server_ip, obj.port))
-                        time.sleep(0.5)
-                    except Exception as e:
-                        print(
-                            "Error connecting ",
-                            obj.name,
-                            " to the requested address -",
-                            e,
-                        )
+
+                    elif obj.protocol == self.TCP_PROTOCOL:
+                        try:
+                            obj.soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                            obj.soc.settimeout(15)
+                            obj.soc.setsockopt(
+                                socket.SOL_SOCKET,
+                                socket.SO_REUSEADDR,
+                                self.BUFFER_SIZE,
+                            )
+                            obj.soc.connect((self.server_ip, obj.port))
+                            time.sleep(0.5)
+                        except Exception as e:
+                            print(
+                                "Error connecting ",
+                                obj.name,
+                                " to the requested address -",
+                                e,
+                            )
+                    elif obj.protocol == self.BLUETOOTH:
+                        try:
+                            obj.soc = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+                            obj.soc.settimeout(15)
+                            obj.soc.setsockopt(
+                                socket.SOL_SOCKET,
+                                socket.SO_REUSEADDR,
+                                self.BUFFER_SIZE,
+                            )
+                            obj.soc.connect((self.server_ip, obj.port))
+                            time.sleep(0.5)
+                        except Exception as e:
+                            print(
+                                "Error connecting ",
+                                obj.name,
+                                " to the requested address -",
+                                e,
+                            )
 
                     # Creates thread for handling incoming messages.
                     thread = threading.Thread(
@@ -434,7 +472,6 @@ class ClientBluetoothNode(Node):
         warn = 1
         i = 0
         stopped = False
-        '''
         if obj.protocol == self.UDP_PROTOCOL:
             while not obj.connected:
                 try:
@@ -486,62 +523,119 @@ class ClientBluetoothNode(Node):
                     if i >= 3:
                         print("Received too many invalid tolkens. Shutting down.")
                         rclpy.shutdown()
-        '''
-        while not obj.connected:
-            obj.soc.connect((self.server_ip, obj.port))
-            time.sleep(1)
-            obj.connected = True
-            buf = b""
 
-        print(str(obj.name) + " connected!")
+        elif obj.protocol == self.TCP_PROTOCOL:
+            while not obj.connected:
+                obj.soc.connect((self.server_ip, obj.port))
+                time.sleep(1)
+                obj.connected = True
+                buf = b""
 
-        while obj.connected and not self.close_threads:
-            try:
-                data_stream = obj.soc.recv(1024)
-                warn = 1
-                if stopped:
-                    print(obj.name, "reinitialized.")
-                    stopped = False
+            print(str(obj.name) + " connected!")
+
+            while obj.connected and not self.close_threads:
+                try:
+                    data_stream = obj.soc.recv(1024)
                     warn = 1
-            except socket.timeout:
-                if warn < 5:
-                    print("No data received from", obj.name, "| Warning #", warn)
-                warn += 1
-                if warn == 5:
-                    print("\n===============================")
-                    print("Stopping warning for", obj.name)
-                    print("===============================\n")
-                    warn = 20
-                    stopped = True
-                continue
-
-            buf += data_stream
-            if b"_split_" not in buf:
-                continue
-            else:
-                buf_decoded = buf.decode()
-                split = buf_decoded.split("_split_")
-                data_encrypted = split[0].encode("utf-8")
-                buf = split[1].encode("utf-8")
-
-            try:
-                if self.encrypt:
-                    data = self.fernet.decrypt(data_encrypted)
-                else:
-                    data = data_encrypted
-                msg = pickle.loads(data)
-                if msg != None:
-                    obj.publisher.publish(msg)
-                else:
+                    if stopped:
+                        print(obj.name, "reinitialized.")
+                        stopped = False
+                        warn = 1
+                except socket.timeout:
+                    if warn < 5:
+                        print("No data received from", obj.name, "| Warning #", warn)
+                    warn += 1
+                    if warn == 5:
+                        print("\n===============================")
+                        print("Stopping warning for", obj.name)
+                        print("===============================\n")
+                        warn = 20
+                        stopped = True
                     continue
-            except socket.timeout:
-                continue
-            except cryptography.fernet.InvalidToken:
-                print("Received message with invalid tolken!")
-                i += 1
-                if i >= 3:
-                    print("Received too many invalid tolkens. Shutting down.")
-                    rclpy.shutdown()
+
+                buf += data_stream
+                if b"_split_" not in buf:
+                    continue
+                else:
+                    buf_decoded = buf.decode()
+                    split = buf_decoded.split("_split_")
+                    data_encrypted = split[0].encode("utf-8")
+                    buf = split[1].encode("utf-8")
+
+                try:
+                    if self.encrypt:
+                        data = self.fernet.decrypt(data_encrypted)
+                    else:
+                        data = data_encrypted
+                    msg = pickle.loads(data)
+                    if msg != None:
+                        obj.publisher.publish(msg)
+                    else:
+                        continue
+                except socket.timeout:
+                    continue
+                except cryptography.fernet.InvalidToken:
+                    print("Received message with invalid tolken!")
+                    i += 1
+                    if i >= 3:
+                        print("Received too many invalid tolkens. Shutting down.")
+                        rclpy.shutdown()
+        elif obj.protocol == self.BLUETOOTH:
+            while not obj.connected:
+                obj.soc.connect((self.server_ip, obj.port))
+                time.sleep(1)
+                obj.connected = True
+                buf = b""
+
+            print(str(obj.name) + " connected!")
+
+            while obj.connected and not self.close_threads:
+                try:
+                    data_stream = obj.soc.recv(1024)
+                    warn = 1
+                    if stopped:
+                        print(obj.name, "reinitialized.")
+                        stopped = False
+                        warn = 1
+                except socket.timeout:
+                    if warn < 5:
+                        print("No data received from", obj.name, "| Warning #", warn)
+                    warn += 1
+                    if warn == 5:
+                        print("\n===============================")
+                        print("Stopping warning for", obj.name)
+                        print("===============================\n")
+                        warn = 20
+                        stopped = True
+                    continue
+
+                buf += data_stream
+                if b"_split_" not in buf:
+                    continue
+                else:
+                    buf_decoded = buf.decode()
+                    split = buf_decoded.split("_split_")
+                    data_encrypted = split[0].encode("utf-8")
+                    buf = split[1].encode("utf-8")
+
+                try:
+                    if self.encrypt:
+                        data = self.fernet.decrypt(data_encrypted)
+                    else:
+                        data = data_encrypted
+                    msg = pickle.loads(data)
+                    if msg != None:
+                        obj.publisher.publish(msg)
+                    else:
+                        continue
+                except socket.timeout:
+                    continue
+                except cryptography.fernet.InvalidToken:
+                    print("Received message with invalid tolken!")
+                    i += 1
+                    if i >= 3:
+                        print("Received too many invalid tolkens. Shutting down.")
+                        rclpy.shutdown()
 
         print("Closing", obj.name)
         obj.soc.shutdown()
@@ -564,7 +658,7 @@ def main(argv=sys.argv[1:]):
 
     # Initialize rclpy and create node object
     rclpy.init(args=argv)
-    client_node = ClientBluetoothNode(
+    client_node = ClientNode(
         args.robot_name, args.encryption_key, args.use_name, args.use_encryption
     )
 
