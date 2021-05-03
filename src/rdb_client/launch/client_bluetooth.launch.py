@@ -59,7 +59,7 @@ def generate_launch_description(argv=sys.argv[1:]):
 
         launch_ros.actions.Node(
             package="rdb_client",
-            executable="client",
+            executable="client_blu",
             name="client_node",
             output="screen",
             emulate_tty=True,

@@ -34,7 +34,7 @@ client_node:
     # ---------------------------------------------------------------------------
     # *_protocols
     # Protocol to be used for sending or receiving data.
-    # Can be either 'TCP' or 'UDP'
+    # Can be either 'TCP' or 'BLUETOOTH'
     # ---------------------------------------------------------------------------
     # *_qos
     # Quality of Service setting used in publisher or subscriber.
@@ -54,24 +54,24 @@ client_node:
     #receive_topics: ['scan', 'odom', 'map']
     #receive_msg_types: ['LaserScan', 'Odometry', 'OccupancyGrid']
     #receive_ports: [12004, 12005, 12006]
-    #receive_protocols: ['UDP', 'UDP', 'UDP']
+    #receive_protocols: ['BLUETOOTH', 'BLUETOOTH', 'BLUETOOTH']
     #receive_qos: ['qos_profile_sensor_data', 'qos_profile_sensor_data', 'qos_profile_sensor_data']
 
     #transmit_topics: ['initialpose', 'goal_pose']
     #transmit_msg_types: ['PoseWithCovarianceStamped', 'PoseStamped']
     #transmit_ports: [12002, 12012]
-    #transmit_protocols: ['UDP', 'UDP']
+    #transmit_protocols: ['BLUETOOTH', 'BLUETOOTH']
     #transmit_qos: ['qos_profile_system_default', 'qos_profile_system_default']
 
 
     receive_topics: ['goal_pose']
     receive_msg_types: ['PoseStamped']
     receive_ports: [12000]
-    receive_protocols: ['TCP']
+    receive_protocols: ['BLUETOOTH']
     receive_qos: ['qos_profile_sensor_data']
 
     transmit_topics: ['scan', 'odom', 'tf', 'shutdown']
     transmit_msg_types: ['LaserScan', 'Odometry', 'TFMessage', 'String']
     transmit_ports: [12001, 12002, 12003, 12004]
-    transmit_protocols: ['UDP', 'UDP', 'UDP', 'TCP']
+    transmit_protocols: ['BLUETOOTH', 'BLUETOOTH', 'BLUETOOTH', 'BLUETOOTH']
     transmit_qos: ['qos_profile_sensor_data', 'qos_profile_sensor_data', 'qos_profile_sensor_data', '10']
