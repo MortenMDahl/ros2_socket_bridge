@@ -18,6 +18,7 @@
 import sys
 import rclpy
 from rclpy.node import Node
+
 from std_msgs.msg import *
 from nav_msgs.msg import *
 from sensor_msgs.msg import *
@@ -25,6 +26,7 @@ from geometry_msgs.msg import *
 from visualization_msgs.msg import *
 from tf2_msgs.msg import *
 from map_msgs.msg import *
+
 from rclpy.qos import *
 from rclpy.utilities import remove_ros_args
 import argparse
@@ -106,7 +108,7 @@ class ClientNode(Node):
         receive_qos_temp = self.get_parameter("receive_qos").value
 
         self.shutdown_subscriber = self.create_subscription(
-        String, "shutdown", self.shutdown, 10
+            String, "shutdown", self.shutdown, 10
         )
 
         # Checks to see if the user has given the right amount of settings.
@@ -221,10 +223,9 @@ class ClientNode(Node):
         except TypeError:
             init_msg += ":"
 
-        
-		#Change the qos from being a string into being either integer or class.
-		#The str_to_class converts any string to a class, if the class is defined.
-		
+        # Change the qos from being a string into being either integer or class.
+        # The str_to_class converts any string to a class, if the class is defined.
+
         try:
             for qos in transmit_qos_temp:
                 try:
@@ -283,7 +284,10 @@ class ClientNode(Node):
             socket.SOL_SOCKET, socket.SO_REUSEADDR, self.BUFFER_SIZE
         )
         self.clientSocket.settimeout(None)
-        print(self.robot_name, "connecting to server ({}:{})...".format(self.server_ip, self.server_port))
+        print(
+            self.robot_name,
+            "connecting to server ({}:{})...".format(self.server_ip, self.server_port),
+        )
 
         while not connected:
             try:
@@ -297,9 +301,7 @@ class ClientNode(Node):
         self.clientSocket.send(init_msg.encode("utf-8"))
         connection_response = self.clientSocket.recv(2048)
 
-        shutdown_thread = threading.Thread(
-                        target=self.shutdown_monitor_thread
-                    )
+        shutdown_thread = threading.Thread(target=self.shutdown_monitor_thread)
         shutdown_thread.start()
         self.thread_objects.append(shutdown_thread)
 
@@ -320,7 +322,7 @@ class ClientNode(Node):
                             obj.soc.settimeout(15)
                             obj.soc.setsockopt(
                                 socket.SOL_SOCKET, socket.SO_RCVBUF, 1048576
-                            ) 
+                            )
                             obj.soc.sendto(b"initialize_channel", obj.address)
                             print(obj.name + " establishing connection...")
                             time.sleep(0.5)
@@ -407,12 +409,14 @@ class ClientNode(Node):
 
     def shutdown(self, data):
         if data.data == "shutdown":
-            print("Shutdown received from topic\nPlease wait for connections to close...")
+            print(
+                "Shutdown received from topic\nPlease wait for connections to close..."
+            )
             self.close_threads = True
             for thread in self.threads:
-                    thread.join()
-            self.clientSocket.send(b'shutdown')
-            print('Sent shutdown to server.')
+                thread.join()
+            self.clientSocket.send(b"shutdown")
+            print("Sent shutdown to server.")
         else:
             pass
 
@@ -420,9 +424,9 @@ class ClientNode(Node):
         while not self.close_threads:
             try:
                 data = self.clientSocket.recv(2048)
-                if data == b'shutdown':
-                    print('Received shutdown from server.')
-                    print('Please wait for connections to close...')
+                if data == b"shutdown":
+                    print("Received shutdown from server.")
+                    print("Please wait for connections to close...")
                     self.close_threads = True
                 else:
                     continue
@@ -542,12 +546,13 @@ class ClientNode(Node):
                         print("Received too many invalid tolkens. Shutting down.")
                         rclpy.shutdown()
 
-        print('Closing', obj.name)
+        print("Closing", obj.name)
         obj.soc.shutdown()
         self.close_threads = False
 
     def str_to_class(self, classname):
         return getattr(sys.modules[__name__], classname)
+
 
 def main(argv=sys.argv[1:]):
     # Get parameters from launch file
@@ -562,7 +567,9 @@ def main(argv=sys.argv[1:]):
 
     # Initialize rclpy and create node object
     rclpy.init(args=argv)
-    client_node = ClientNode(args.robot_name, args.encryption_key, args.use_name, args.use_encryption)
+    client_node = ClientNode(
+        args.robot_name, args.encryption_key, args.use_name, args.use_encryption
+    )
 
     # Spin the node
     rclpy.spin(client_node)
@@ -570,8 +577,8 @@ def main(argv=sys.argv[1:]):
     try:
         client_node.destroy_node()
         rclpy.shutdown()
-    except:
-        print("Error: " + "rclpy shutdown failed")
+    except Exception as e:
+        print("Error:", e, "|rclpy shutdown failed")
 
 
 if __name__ == "__main__":

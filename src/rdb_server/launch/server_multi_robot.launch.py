@@ -44,6 +44,9 @@ def generate_launch_description(argv=sys.argv[1:]):
     # Whether or not to use name as a prefix for incoming topics
     use_name = 'true'
 
+    # Whether or not to encrypt and decrypt incoming and outgoing messages
+    use_encryption = 'true'
+    
     # Any 32 url-safe base64-encoded bytes object passed in as a string.
     # This can be generated using the generate_key.py script in the main folder.
     # Must match with client key.
@@ -69,7 +72,7 @@ def generate_launch_description(argv=sys.argv[1:]):
             name="server_node",
             output="screen",
             emulate_tty=True,
-            arguments=['-name', name1, '-p', server_port1, '-key', encryption_key, '-usename', use_name],
+            arguments=['-name', name1, '-p', server_port1, '-key', encryption_key, '-usename', use_name, '-encrypt', use_encryption],
             parameters=[param_dir]),
 
         launch_ros.actions.Node(
@@ -78,7 +81,7 @@ def generate_launch_description(argv=sys.argv[1:]):
             name="server_node",
             output="screen",
             emulate_tty=True,
-            arguments=['-name', name2, '-p', server_port2, '-key', encryption_key, '-usename', use_name],
+            arguments=['-name', name2, '-p', server_port2, '-key', encryption_key, '-usename', use_name, '-encrypt', use_encryption],
             parameters=[param_dir]),
 
         launch_ros.actions.Node(
@@ -87,7 +90,7 @@ def generate_launch_description(argv=sys.argv[1:]):
             name="server_node",
             output="screen",
             emulate_tty=True,
-            arguments=['-name', name3, '-p', server_port3, '-key', encryption_key, '-usename', use_name],
+            arguments=['-name', name3, '-p', server_port3, '-key', encryption_key, '-usename', use_name, '-encrypt', use_encryption],
             parameters=[param_dir]),
 
         launch_ros.actions.Node(
@@ -96,6 +99,6 @@ def generate_launch_description(argv=sys.argv[1:]):
             name="server_node",
             output="screen",
             emulate_tty=True,
-            arguments=['-name', name4, '-p', server_port4, '-key', encryption_key, '-usename', use_name],
+            arguments=['-name', name4, '-p', server_port4, '-key', encryption_key, '-usename', use_name, '-encrypt', use_encryption],
             parameters=[param_dir]),
  ])

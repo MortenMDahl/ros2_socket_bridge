@@ -18,21 +18,23 @@
 from std_msgs.msg import String
 import rclpy
 
-shutdown = 'shutdown'
+shutdown = "shutdown"
 
 shutdown_msg = String()
 shutdown_msg.data = shutdown
 
+
 def main():
-	rclpy.init()
+    rclpy.init()
 
-	node = rclpy.create_node('shutdown_node')
-	pub = node.create_publisher(String, 'shutdown', 10)
+    node = rclpy.create_node("shutdown_node")
+    pub = node.create_publisher(String, "shutdown", 10)
 
-	pub.publish(shutdown_msg)
+    pub.publish(shutdown_msg)
 
-	node.destroy_node()
-	rclpy.shutdown()
+    node.destroy_node()
+    rclpy.shutdown()
 
-if __name__ == '__main__':
-	main()
+
+if __name__ == "__main__":
+    main()

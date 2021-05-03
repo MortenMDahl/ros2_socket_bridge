@@ -14,7 +14,6 @@ setup(
         ('share/' + package_name, ['package.xml']),
         (os.path.join('share', package_name), glob('launch/*.launch.py')), # Add launch files
         (os.path.join('share', package_name, 'config'), glob('config/*.yaml')), # Add config.yaml file
-        (os.path.join('share', package_name, 'config/multi_robot'), glob('config/multi_robot/*.yaml')), # Add multi-robot config files
     ],
     install_requires=['setuptools'],
     zip_safe=True,

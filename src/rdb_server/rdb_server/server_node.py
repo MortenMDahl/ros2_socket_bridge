@@ -15,11 +15,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from timeit import default_timer as timer
+# from timeit import default_timer as timer
 
 import sys
 import rclpy
 from rclpy.node import Node
+
 from std_msgs.msg import *
 from nav_msgs.msg import *
 from sensor_msgs.msg import *
@@ -27,6 +28,7 @@ from geometry_msgs.msg import *
 from tf2_msgs.msg import *
 from visualization_msgs.msg import *
 from map_msgs.msg import *
+
 from rcl_interfaces.msg import Log, ParameterEvent
 from rclpy.qos import *
 from rclpy.utilities import remove_ros_args
@@ -90,10 +92,10 @@ class ServerNode(Node):
 
         self.INIT_COMPLETE = False
         self.close_threads = False
-        #Quite a large buffer size (2^15, 32K), but it is required for redundancy.
-        #If you get a serializing error, this is probably the cause. Too small of buffer size
-        #causes the message received to be uncomplete and the deserializer gets error converting
-        #wrong types. This occurs when using TCP due to streaming of data. The buffer is sent if it gets filled up.
+        # Quite a large buffer size (2^15, 32K), but it is required for redundancy.
+        # If you get a serializing error, this is probably the cause. Too small of buffer size
+        # causes the message received to be uncomplete and the deserializer gets error converting
+        # wrong types. This occurs when using TCP due to streaming of data. The buffer is sent if it gets filled up.
 
         self.BUFFER_SIZE = 32768
 
@@ -186,7 +188,7 @@ class ServerNode(Node):
                 self.transmit_ports = list(data[4].split(";"))
                 try:
                     self.transmit_ports = [int(port) for port in self.transmit_ports]
-                except ValueError:
+                except ValueError:  # Handles an empty list
                     pass
 
                 self.transmit_protocols = list(data[5].split(";"))
@@ -238,7 +240,7 @@ class ServerNode(Node):
                                 self.transmit_ports[i],
                                 self.transmit_protocols[i],
                                 self.transmit_qos[i],
-                                self.encrypt
+                                self.encrypt,
                             )
                         )
                     except IndexError:  # Any index problems should already be handled on the client. This fixes an empty list of topics.
@@ -255,7 +257,7 @@ class ServerNode(Node):
                                 self.receive_ports[j],
                                 self.receive_protocols[j],
                                 self.receive_qos[j],
-                                self.encrypt
+                                self.encrypt,
                             )
                         )
                     except IndexError:
@@ -290,7 +292,7 @@ class ServerNode(Node):
                                 obj.name,
                                 " to the requested address - ",
                                 e,
-                                "({}:{})".format(self.server_ip, int(obj.port))
+                                "({}:{})".format(self.server_ip, int(obj.port)),
                             )
 
                     elif obj.protocol == self.TCP_PROTOCOL:
@@ -368,8 +370,10 @@ class ServerNode(Node):
         else:
             # Shutdown closes sockets and ends threads
             # If a shutdown is received from the client
-            if data[0] == 'shutdown':
-                print('Shutdown received from client\nPlease wait for connections to close..."')
+            if data[0] == "shutdown":
+                print(
+                    'Shutdown received from client\nPlease wait for connections to close..."'
+                )
                 self.close_threads = True
                 for thread in self.threads:
                     thread.join()
@@ -378,12 +382,14 @@ class ServerNode(Node):
 
     def shutdown(self, data):
         if data.data == "shutdown":
-            print("Shutdown received from topic\nPlease wait for connections to close...")
+            print(
+                "Shutdown received from topic\nPlease wait for connections to close..."
+            )
             self.close_threads = True
             for thread in self.threads:
-                    thread.join()
-            self.server.send(b'shutdown')
-            print('Sent shutdown to client.')
+                thread.join()
+            self.server.send(b"shutdown")
+            print("Sent shutdown to client.")
         else:
             pass
 
@@ -408,21 +414,12 @@ class ServerNode(Node):
                 # Decrypt with Fernet and deserialize with pickle
                 # Testing time it takes to serialize and encrypt.
                 try:
-                    #try:
-                        #file = open('set_size/dd/6k/{}.txt'.format(obj.name),'a')
-                    #except FileNotFoundError:
-                       # file = open('set_size/dd/6k/{}.txt'.format(obj.name.split('/')[0] + "|" +obj.name.split('/')[-1]),'a')
                     data, addr = obj.soc.recvfrom(self.BUFFER_SIZE)
-                    #start = timer()
                     if self.encrypt:
                         data = self.fernet.decrypt(data)
-                    #middle = timer()
                     msg = pickle.loads(data)
-                    #end = timer()
                     obj.publisher.publish(msg)
                     warn = 1
-                    #file.write(str(middle-start) +"|"+ str(end-middle) +"|"+ str(end-start) + "\n")
-                    #file.close()
                     if stopped:
                         print(obj.name, "reinitialized.")
                         stopped = False
@@ -446,8 +443,8 @@ class ServerNode(Node):
                         print("Received too many invalid tolkens. Shutting down.")
                         rclpy.shutdown()
                 except OSError as e:
-                    print('OSError:', e)
-            
+                    print("OSError:", e)
+
             self.thread_counter -= 1
             # Resets incoming and outgoing connections on shutdown.
             # Server is ready for new connection from client.
@@ -455,10 +452,8 @@ class ServerNode(Node):
                 self.close_threads = False
                 self.receive_objects = []
                 self.transmit_objects = []
-            print('Closing', obj.name)
+            print("Closing", obj.name)
             obj.soc.close()
-
-
 
         elif obj.protocol == self.TCP_PROTOCOL:
             while not obj.connected:
@@ -469,7 +464,7 @@ class ServerNode(Node):
             print(str(obj.name) + " connected!")
 
             while obj.connected and not self.close_threads:
-                try: 
+                try:
                     data_stream = obj.connection.recv(1024)
                     warn = 1
                     if stopped:
@@ -518,9 +513,8 @@ class ServerNode(Node):
                         print("Stopping InvalidTolken warning for " + obj.name)
 
             self.close_threads = False
-            print('Closing', obj.name)
+            print("Closing", obj.name)
             obj.soc.shutdown()
-            
 
     # Converts sting to class.
     # Only works if said class is defined. Remember to import your own custom message types if used.
@@ -543,7 +537,11 @@ def main(argv=sys.argv[1:]):
     # Initialize rclpy and create node object
     rclpy.init(args=argv)
     server_node = ServerNode(
-        args.robot_name, args.server_port, args.encryption_key, args.use_name, args.use_encryption
+        args.robot_name,
+        args.server_port,
+        args.encryption_key,
+        args.use_name,
+        args.use_encryption,
     )
 
     # Spin the node
@@ -552,9 +550,9 @@ def main(argv=sys.argv[1:]):
     try:
         server_node.destroy_node()
         rclpy.shutdown()
-    except:
-        print("Error: " + "rclpy shutdown failed")
+    except Exception as e:
+        print("Error:", e, "|rclpy shutdown failed")
 
 
 if __name__ == "__main__":
-    main() 
+    main()

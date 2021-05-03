@@ -15,17 +15,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from timeit import default_timer as timer
-
 import rclpy
 import pickle
 from cryptography.fernet import Fernet
 
 import sys
 
+
 class BridgeObject:
     def __init__(
-        self, direction, encryption_key, name, msg_type, port, protocol, qos=10, encrypt = True
+        self,
+        direction,
+        encryption_key,
+        name,
+        msg_type,
+        port,
+        protocol,
+        qos=10,
+        encrypt=True,
     ):
         self.direction = direction
         self.name = name
@@ -52,24 +59,14 @@ class BridgeObject:
         return getattr(sys.modules[__name__], classname)
 
     def callback(self, data):
-        #try:
-        #    file = open('set_size/se/6k/{}.txt'.format(self.name), 'a')
-        #except FileNotFoundError:
-        #    file = open('set_size/se/4k/{}.txt'.format(self.name.split('/')[0] + "|" +self.name.split('/')[-1]),'a')
-        #start = timer()
         serialized_msg = pickle.dumps(data)
-        #print(sys.getsizeof(serialized_msg))
-        #middle = timer()
         if self.encrypt:
             msg = self.fernet.encrypt(serialized_msg)
         else:
             msg = serialized_msg
-        #end = timer()
-        if self.protocol == self.UDP_PROTOCOL:
-            self.soc.sendto(msg, self.address)
-            #file.write(str(middle-start) +"|"+ str(end-middle) +"|"+ str(end-start) + "\n")
 
-        elif self.protocol == self.TCP_PROTOCOL:
+        if self.protocol == self.TCP_PROTOCOL:
             msg += b"_split_"
             self.soc.send(msg)
-            #file.write(str(middle-start) +"|"+ str(end-middle) +"|"+ str(end-start) + "\n")
+        else:
+            self.soc.sendto(msg, self.address)
