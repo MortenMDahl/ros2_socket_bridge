@@ -50,6 +50,7 @@ class BridgeObject:
         self.address = None
         self.UDP_PROTOCOL = "UDP"
         self.TCP_PROTOCOL = "TCP"
+        self.BLUETOOTH = "BLUETOOTH"
 
         # Publisher and subscriber variables
         self.publisher = None
@@ -65,5 +66,8 @@ class BridgeObject:
         else:
             msg = serialized_msg
 
-        msg += b"_split_"
-        self.soc.send(msg)
+        if self.protocol == self.TCP_PROTOCOL or self.BLUETOOTH:
+            msg += b"_split_"
+            self.soc.send(msg)
+        else:
+            self.soc.sendto(msg, self.address)

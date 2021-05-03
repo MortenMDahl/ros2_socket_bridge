@@ -280,11 +280,14 @@ class ClientNode(Node):
         except TypeError:
             pass
 
-        # Create a TCP socket object and connect to server
-        self.clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.clientSocket.setsockopt(
-            socket.SOL_SOCKET, socket.SO_REUSEADDR, self.BUFFER_SIZE
-        )
+        # Create a TCP or bluetooth socket object and connect to server
+        if ":" in self.server_ip:
+            self.clientSocket = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+        else:
+            self.clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.clientSocket.setsockopt(
+                socket.SOL_SOCKET, socket.SO_REUSEADDR, self.BUFFER_SIZE
+            )
         self.clientSocket.settimeout(None)
         print(
             self.robot_name,
