@@ -40,7 +40,7 @@ import pickle
 import cryptography
 from cryptography.fernet import Fernet
 
-from rdb_client.bridge_objects import *
+from rdb_client.bridge_objects_bluetooth import *
 
 # from rdb_client.msg import * # Imports user-made message types
 

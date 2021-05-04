@@ -66,8 +66,11 @@ class BridgeObject:
         else:
             msg = serialized_msg
 
-        if self.protocol == self.TCP_PROTOCOL or self.BLUETOOTH:
+        if self.protocol == self.TCP_PROTOCOL:
             msg += b"_split_"
             self.soc.send(msg)
+        elif self.protocol == self.BLUETOOTH:
+            msg += b"_split_"
+            self.connection.send(msg)
         else:
             self.soc.sendto(msg, self.address)
