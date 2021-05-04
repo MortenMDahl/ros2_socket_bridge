@@ -2,9 +2,7 @@
 
 **README and the project is still under development. Do you have questions or feature requests? Contact me at mortemd@stud.ntnu.no.**
 
-The ros2_socket_bridge package is made to enable node communication across different domains set with 
-
-```export ROS_DOMAIN_ID=*```. 
+The ros2_socket_bridge package is made to enable node communication across different domains or computers using the built-in python socket package. This enables the transmission of messages using TCP/IP or bluetooth.
 
 It works by utilizing subscribers and publishers combined with socket communication, which allows the user to transfer information received over topics to different domains.
 
