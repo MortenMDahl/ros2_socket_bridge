@@ -1,8 +1,8 @@
-# ros2_domain_bridge
+# ros2_socket_bridge
 
 **README and the project is still under development. Do you have questions or feature requests? Contact me at mortemd@stud.ntnu.no.**
 
-The ros2_domain_bridge package is made to enable node communication across different domains set with 
+The ros2_socket_bridge package is made to enable node communication across different domains set with 
 
 ```export ROS_DOMAIN_ID=*```. 
 
@@ -29,9 +29,9 @@ Install from source by navigating to the folder you wish to install in. Run ```g
 The use case for this package is only set by imagination, however it does require a little bit of configuration to work with any topic.
 
 ### Generating an encryption key
-Due to security risks using the pickle package, all messages are encrypted when sent. To encrypt messages, an encryption key is needed. This can be any 32 url-safe base64-encoded bytes object, and you can generate one by running the 'generate_key.py' script located in the main folder of ros2_domain_bridge.
+Due to security risks using the pickle package, all messages are encrypted when sent. To encrypt messages, an encryption key is needed. This can be any 32 url-safe base64-encoded bytes object, and you can generate one by running the 'generate_key.py' script located in the main folder of ros2_socket_bridge.
 
-Navigate to the ros2_domain_bridge folder and run
+Navigate to the ros2_socket_bridge folder and run
 ```
 $ python3 generate_key.py
 ```
