@@ -42,7 +42,7 @@ import pickle
 import cryptography
 from cryptography.fernet import Fernet
 
-from rdb_server.bridge_objects import *
+from rdb_server.bridge_objects_bluetooth import *
 
 # from .rdb_server.msg import * # Imports user-made message types.
 
@@ -380,7 +380,7 @@ class ServerNode(Node):
                                 "Error binding ", obj.name, " to requested address: ", e
                             )
                     elif obj.protocol == self.BLUETOOTH:
-                        # Creates a TCP socket
+                        # Creates a Bluetooth socket
                         try:
                             obj.soc = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
                             obj.soc.settimeout(15)
@@ -483,7 +483,7 @@ class ServerNode(Node):
 
             
 
-        elif obj.protocol == self.TCP_PROTOCOL:
+        elif obj.protocol == self.TCP_PROTOCOL or self.BLUETOOTH:
             while not obj.connected:
                 obj.connection, obj.address = obj.soc.accept()
                 obj.connected = True
@@ -539,6 +539,8 @@ class ServerNode(Node):
                         warn += 1
                     if warn == 3:
                         print("Stopping InvalidTolken warning for " + obj.name)
+
+
 
             self.thread_counter -= 1
             # Resets incoming and outgoing connections on shutdown.

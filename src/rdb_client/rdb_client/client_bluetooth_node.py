@@ -403,7 +403,6 @@ class ClientNode(Node):
                                 socket.SO_REUSEADDR,
                                 self.BUFFER_SIZE,
                             )
-                            obj.soc.connect((self.server_ip, obj.port))
                             time.sleep(0.5)
                         except Exception as e:
                             print(
@@ -421,7 +420,6 @@ class ClientNode(Node):
                                 socket.SO_REUSEADDR,
                                 self.BUFFER_SIZE,
                             )
-                            obj.soc.connect((self.server_ip, obj.port))
                             time.sleep(0.5)
                         except Exception as e:
                             print(
