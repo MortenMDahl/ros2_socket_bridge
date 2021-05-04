@@ -25,7 +25,6 @@ setup(
     entry_points={
         'console_scripts': [
             'client = rdb_client.client_node:main',
-            'client_blu = rdb_client.client_bluetooth_node:main',
             'shutdown = rdb_client.shutdown:main',
         ],
     },

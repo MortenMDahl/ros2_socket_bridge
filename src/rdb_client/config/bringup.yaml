@@ -4,6 +4,9 @@ client_node:
     # ---------------------------------------------------------------------------
     # server_ip:
     # IP of the computer where the server node is running.
+    #
+    # Setting the server IP to be the MAC address of the bluetooth device 
+    # running the server will automatically start the server in bluetooth-mode.
     # ---------------------------------------------------------------------------
     # server_port:
     # Port on the server computer which is to be used for the main communication
@@ -34,11 +37,12 @@ client_node:
     # ---------------------------------------------------------------------------
     # *_protocols
     # Protocol to be used for sending or receiving data.
-    # Can be either 'TCP' or 'UDP'
+    # Can be either 'TCP', 'UDP' or 'BLUETOOTH'.
+    # Has to be 'BLUETOOTH' if the application is running in bluetooth mode.
     # ---------------------------------------------------------------------------
     # *_qos
     # Quality of Service setting used in publisher or subscriber.
-    # Can be any integer or QoS documented in rclpy.qos
+    # Can be any integer as a string, or QoS documented in rclpy.qos
     # ---------------------------------------------------------------------------
 
 

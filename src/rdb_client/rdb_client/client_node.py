@@ -40,7 +40,7 @@ import pickle
 import cryptography
 from cryptography.fernet import Fernet
 
-from rdb_client.bridge_objects import *
+from rdb_client.bridge_objects_bluetooth import *
 
 # from rdb_client.msg import * # Imports user-made message types
 
@@ -70,6 +70,8 @@ class ClientNode(Node):
 
         self.UDP_PROTOCOL = "UDP"
         self.TCP_PROTOCOL = "TCP"
+        self.BLUETOOTH = "BLUETOOTH"
+
         self.DIRECTION_RECEIVE = "receive"
         self.DIRECTION_TRANSMIT = "transmit"
         self.BUFFER_SIZE = 32768
@@ -278,11 +280,14 @@ class ClientNode(Node):
         except TypeError:
             pass
 
-        # Create a TCP socket object and connect to server
-        self.clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.clientSocket.setsockopt(
-            socket.SOL_SOCKET, socket.SO_REUSEADDR, self.BUFFER_SIZE
-        )
+        # Create a TCP or bluetooth socket object and connect to server
+        if ":" in self.server_ip:
+            self.clientSocket = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+        else:
+            self.clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.clientSocket.setsockopt(
+                socket.SOL_SOCKET, socket.SO_REUSEADDR, self.BUFFER_SIZE
+            )
         self.clientSocket.settimeout(None)
         print(
             self.robot_name,
@@ -344,6 +349,21 @@ class ClientNode(Node):
                                 " to requested address: ",
                                 e,
                             )
+                    elif obj.protocol == self.BLUETOOTH:
+                        try:
+                            obj.soc = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+                            obj.soc.settimeout(15)
+                            obj.soc.setsockopt(
+                                socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
+                            )
+                            obj.soc.connect(obj.address)
+                        except Exception as e:
+                            print(
+                                "Error connecting ",
+                                obj.name,
+                                " to requested address: ",
+                                e,
+                            )
                     # Creates a subscriber for each object with its appropriate callback function based on protocol.
                     print(obj.name + " connected!")
                     obj.subscriber = self.create_subscription(
@@ -381,9 +401,25 @@ class ClientNode(Node):
                             obj.soc.setsockopt(
                                 socket.SOL_SOCKET,
                                 socket.SO_REUSEADDR,
-                                self.BUFFER_SIZE * 2 * 2,
+                                self.BUFFER_SIZE,
                             )
-                            obj.soc.connect((self.server_ip, obj.port))
+                            time.sleep(0.5)
+                        except Exception as e:
+                            print(
+                                "Error connecting ",
+                                obj.name,
+                                " to the requested address -",
+                                e,
+                            )
+                    elif obj.protocol == self.BLUETOOTH:
+                        try:
+                            obj.soc = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+                            obj.soc.settimeout(15)
+                            obj.soc.setsockopt(
+                                socket.SOL_SOCKET,
+                                socket.SO_REUSEADDR,
+                                self.BUFFER_SIZE,
+                            )
                             time.sleep(0.5)
                         except Exception as e:
                             print(
@@ -490,6 +526,62 @@ class ClientNode(Node):
                         rclpy.shutdown()
 
         elif obj.protocol == self.TCP_PROTOCOL:
+            while not obj.connected:
+                obj.soc.connect((self.server_ip, obj.port))
+                time.sleep(1)
+                obj.connected = True
+                buf = b""
+
+            print(str(obj.name) + " connected!")
+
+            while obj.connected and not self.close_threads:
+                try:
+                    data_stream = obj.soc.recv(1024)
+                    warn = 1
+                    if stopped:
+                        print(obj.name, "reinitialized.")
+                        stopped = False
+                        warn = 1
+                except socket.timeout:
+                    if warn < 5:
+                        print("No data received from", obj.name, "| Warning #", warn)
+                    warn += 1
+                    if warn == 5:
+                        print("\n===============================")
+                        print("Stopping warning for", obj.name)
+                        print("===============================\n")
+                        warn = 20
+                        stopped = True
+                    continue
+
+                buf += data_stream
+                if b"_split_" not in buf:
+                    continue
+                else:
+                    buf_decoded = buf.decode()
+                    split = buf_decoded.split("_split_")
+                    data_encrypted = split[0].encode("utf-8")
+                    buf = split[1].encode("utf-8")
+
+                try:
+                    if self.encrypt:
+                        data = self.fernet.decrypt(data_encrypted)
+                    else:
+                        data = data_encrypted
+                    msg = pickle.loads(data)
+                    if msg != None:
+                        obj.publisher.publish(msg)
+                    else:
+                        continue
+                except socket.timeout:
+                    continue
+                except cryptography.fernet.InvalidToken:
+                    print("Received message with invalid tolken!")
+                    i += 1
+                    if i >= 3:
+                        print("Received too many invalid tolkens. Shutting down.")
+                        rclpy.shutdown()
+        elif obj.protocol == self.BLUETOOTH:
             while not obj.connected:
                 obj.soc.connect((self.server_ip, obj.port))
                 time.sleep(1)

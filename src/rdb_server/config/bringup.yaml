@@ -1,3 +1,10 @@
 server_node:
   ros__parameters:
     server_ip: '127.0.0.1'
+
+    # ---------------------------------------------------------------------------
+    # IP of the computer where the server node is running.
+    #
+    # Setting the server IP to be the MAC address of the bluetooth device 
+    # running the server will automatically start the server in bluetooth-mode.
+    # ---------------------------------------------------------------------------

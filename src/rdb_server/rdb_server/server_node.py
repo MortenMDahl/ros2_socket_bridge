@@ -42,7 +42,7 @@ import pickle
 import cryptography
 from cryptography.fernet import Fernet
 
-from rdb_server.bridge_objects import *
+from rdb_server.bridge_objects_bluetooth import *
 
 # from .rdb_server.msg import * # Imports user-made message types.
 
@@ -87,6 +87,8 @@ class ServerNode(Node):
 
         self.UDP_PROTOCOL = "UDP"
         self.TCP_PROTOCOL = "TCP"
+        self.BLUETOOTH = "BLUETOOTH"
+        
         self.DIRECTION_RECEIVE = "receive"
         self.DIRECTION_TRANSMIT = "transmit"
 
@@ -99,10 +101,12 @@ class ServerNode(Node):
 
         self.BUFFER_SIZE = 32768
 
-        # Makes socket object and waits for connection
-
-        self.serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        # Makes socket object and waits for connection. Bluetooth if ":" is in the address.
+        if ":" in self.server_ip:
+            self.serverSocket = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+        else:
+            self.serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         try:
             self.serverSocket.bind((self.server_ip, self.server_port))
@@ -312,6 +316,22 @@ class ServerNode(Node):
                                 " to the requested address -",
                                 e,
                             )
+                    elif obj.protocol == self.BLUETOOTH:
+                        try:
+                            obj.soc = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+                            obj.soc.settimeout(15)
+                            obj.soc.setsockopt(
+                                socket.SOL_SOCKET, socket.SO_REUSEADDR, self.BUFFER_SIZE
+                            )
+                            obj.soc.bind((self.server_ip, int(obj.port)))
+                            obj.soc.listen(3)
+                        except Exception as e:
+                            print(
+                                "Error binding ",
+                                obj.name,
+                                " to the requested address -",
+                                e,
+                            )
 
                     # Creates thread for connecting the sockets and handling incoming data based on protocol.
                     thread = threading.Thread(
@@ -347,6 +367,22 @@ class ServerNode(Node):
                         # Creates a TCP socket
                         try:
                             obj.soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                            obj.soc.settimeout(15)
+                            obj.soc.setsockopt(
+                                socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
+                            )
+                            obj.soc.bind((self.server_ip, int(obj.port)))
+                            obj.soc.listen(3)
+                            obj.connection, obj.address = obj.soc.accept()
+                            time.sleep(0.5)
+                        except Exception as e:
+                            print(
+                                "Error binding ", obj.name, " to requested address: ", e
+                            )
+                    elif obj.protocol == self.BLUETOOTH:
+                        # Creates a Bluetooth socket
+                        try:
+                            obj.soc = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
                             obj.soc.settimeout(15)
                             obj.soc.setsockopt(
                                 socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
@@ -445,17 +481,9 @@ class ServerNode(Node):
                 except OSError as e:
                     print("OSError:", e)
 
-            self.thread_counter -= 1
-            # Resets incoming and outgoing connections on shutdown.
-            # Server is ready for new connection from client.
-            if self.thread_counter == 0:
-                self.close_threads = False
-                self.receive_objects = []
-                self.transmit_objects = []
-            print("Closing", obj.name)
-            obj.soc.close()
+            
 
-        elif obj.protocol == self.TCP_PROTOCOL:
+        elif obj.protocol == self.TCP_PROTOCOL or self.BLUETOOTH:
             while not obj.connected:
                 obj.connection, obj.address = obj.soc.accept()
                 obj.connected = True
@@ -512,7 +540,18 @@ class ServerNode(Node):
                     if warn == 3:
                         print("Stopping InvalidTolken warning for " + obj.name)
 
-            self.close_threads = False
+
+
+            self.thread_counter -= 1
+            # Resets incoming and outgoing connections on shutdown.
+            # Server is ready for new connection from client.
+            if self.thread_counter == 0:
+                self.close_threads = False
+                self.receive_objects = []
+                self.transmit_objects = []
+                print("Closing", obj.name)
+                obj.soc.close()
+                self.close_threads = False
             print("Closing", obj.name)
             obj.soc.shutdown()
 

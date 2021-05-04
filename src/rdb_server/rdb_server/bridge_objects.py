@@ -50,6 +50,7 @@ class BridgeObject:
         self.address = None
         self.UDP_PROTOCOL = "UDP"
         self.TCP_PROTOCOL = "TCP"
+        self.BLUETOOTH = "BLUETOOTH"
 
         # Publisher and subscriber variables
         self.publisher = None
@@ -68,5 +69,8 @@ class BridgeObject:
         if self.protocol == self.TCP_PROTOCOL:
             msg += b"_split_"
             self.soc.send(msg)
+        elif self.protocol == self.BLUETOOTH:
+            msg += b"_split_"
+            self.connection.send(msg)
         else:
             self.soc.sendto(msg, self.address)
