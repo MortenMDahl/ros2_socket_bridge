@@ -86,6 +86,7 @@ class ServerNode(Node):
         self.UDP_PROTOCOL = "UDP"
         self.TCP_PROTOCOL = "TCP"
         self.BLUETOOTH = "BLUETOOTH"
+        self.SERVER = "SERVER"
         
         self.DIRECTION_RECEIVE = "receive"
         self.DIRECTION_TRANSMIT = "transmit"
@@ -236,6 +237,7 @@ class ServerNode(Node):
                         self.receive_objects.append(
                             BridgeObject(
                                 self.DIRECTION_RECEIVE,
+                                self.SERVER,
                                 self.key,
                                 self.transmit_topics[i],
                                 self.transmit_msg_types[i],
@@ -253,6 +255,7 @@ class ServerNode(Node):
                         self.transmit_objects.append(
                             BridgeObject(
                                 self.DIRECTION_TRANSMIT,
+                                self.SERVER,
                                 self.key,
                                 self.receive_topics[j],
                                 self.receive_msg_types[j],
