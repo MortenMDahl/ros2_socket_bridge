@@ -26,6 +26,7 @@ class BridgeObject:
     def __init__(
         self,
         direction,
+        _type,
         encryption_key,
         name,
         msg_type,
@@ -35,6 +36,7 @@ class BridgeObject:
         encrypt=True,
     ):
         self.direction = direction
+        self.type = _type
         self.name = name
         self.msg_type = msg_type
         self.port = port

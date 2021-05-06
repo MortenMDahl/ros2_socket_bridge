@@ -19,7 +19,7 @@ import os
 import socket
 
 
-hciconfig_output = os.popen('hciconfig')
+hciconfig_output = os.popen("hciconfig")
 
 output = hciconfig_output.readlines()
 
@@ -32,25 +32,29 @@ MAC = output[1].strip().split()[2]
 min_port = 1
 max_port = 100
 
-ports = list(range(min_port,max_port+1))
+ports = list(range(min_port, max_port + 1))
 
 available_ports = []
 busy_ports = []
 
+
 def main():
-	for port in ports:
-		try:
-			_socket = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
-			_socket.bind((MAC, port))
-			available_ports.append(port)
-			_socket.close()
-		except OSError:
-			busy_ports.append(port)
-	print("-----------------------------------------")
-	print('Your bluetooth adapters MAC address is:\n', MAC,)
-	print("-----------------------------------------")
-	print('Busy bluetooth ports [{}-{}]:\n'.format(min_port, max_port), busy_ports)
-	print("-----------------------------------------")
+    for port in ports:
+        try:
+            _socket = socket.socket(
+                socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM
+            )
+            _socket.bind((MAC, port))
+            available_ports.append(port)
+            _socket.close()
+        except OSError:
+            busy_ports.append(port)
+    print("-----------------------------------------")
+    print("Your bluetooth adapters MAC address is:\n", MAC)
+    print("-----------------------------------------")
+    print("Busy bluetooth ports [{}-{}]:\n".format(min_port, max_port), busy_ports)
+    print("-----------------------------------------")
+
 
 if __name__ == "__main__":
-	main()
+    main()

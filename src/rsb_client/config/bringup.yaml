@@ -68,14 +68,14 @@ client_node:
     #transmit_qos: ['qos_profile_system_default', 'qos_profile_system_default']
 
 
-    receive_topics: ['goal_pose']
-    receive_msg_types: ['PoseStamped']
-    receive_ports: [12000]
+    receive_topics: ['topic']
+    receive_msg_types: ['String']
+    receive_ports: [12001]
     receive_protocols: ['TCP']
-    receive_qos: ['qos_profile_sensor_data']
+    receive_qos: ['10']
 
-    transmit_topics: ['scan', 'odom', 'tf', 'shutdown']
-    transmit_msg_types: ['LaserScan', 'Odometry', 'TFMessage', 'String']
-    transmit_ports: [12001, 12002, 12003, 12004]
-    transmit_protocols: ['UDP', 'UDP', 'UDP', 'TCP']
-    transmit_qos: ['qos_profile_sensor_data', 'qos_profile_sensor_data', 'qos_profile_sensor_data', '10']
+    transmit_topics: []
+    transmit_msg_types: []
+    transmit_ports: []
+    transmit_protocols: []
+    transmit_qos: []
