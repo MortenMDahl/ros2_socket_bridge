@@ -87,7 +87,7 @@ class ServerNode(Node):
         self.TCP_PROTOCOL = "TCP"
         self.BLUETOOTH = "BLUETOOTH"
         self.SERVER = "SERVER"
-        
+
         self.DIRECTION_RECEIVE = "receive"
         self.DIRECTION_TRANSMIT = "transmit"
 
@@ -102,7 +102,9 @@ class ServerNode(Node):
 
         # Makes socket object and waits for connection. Bluetooth if ":" is in the address.
         if ":" in self.server_ip:
-            self.serverSocket = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+            self.serverSocket = socket.socket(
+                socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM
+            )
         else:
             self.serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -111,9 +113,9 @@ class ServerNode(Node):
             self.serverSocket.bind((self.server_ip, self.server_port))
 
         except socket.error as e:
-            print("Error binding server socket: " + str(e))
+            self.error_msg("Error binding server socket: " + str(e))
 
-        print(
+        self.info_msg(
             str(self.name)
             + " waiting for connection at port "
             + str(self.server_port)
@@ -150,7 +152,7 @@ class ServerNode(Node):
                     self.server,
                     address,
                 ) = self.serverSocket.accept()  # Waits incoming connection
-                print(
+                self.info_msg(
                     self.name
                     + ": data received from "
                     + str(address[0])
@@ -172,12 +174,14 @@ class ServerNode(Node):
 
     def server_msg_handler(self, data):
         if data[0] == "init":
-            print("Received initialization message.")
+            self.info_msg("Received initialization message.")
             if data[1] == self.robot_name:
 
                 # Confirm with the client that the settings match
                 confirm_init_msg = "Matching init received.".encode("utf-8")
-                print("Matching initialization settings. Confirming with client.")
+                self.info_msg(
+                    "Matching initialization settings. Confirming with client."
+                )
                 self.server.send(confirm_init_msg)
 
                 # Here, the "transmit" lists are the exact same as listed in the client initialization file.
@@ -292,12 +296,12 @@ class ServerNode(Node):
                             )
                             obj.soc.bind((self.server_ip, int(obj.port)))
                         except Exception as e:
-                            print(
-                                "Error binding ",
-                                obj.name,
-                                " to the requested address - ",
-                                e,
-                                "({}:{})".format(self.server_ip, int(obj.port)),
+                            self.error_msg(
+                                "Error binding "
+                                + obj.name
+                                + " to the requested address - "
+                                + e
+                                + "({}:{})".format(self.server_ip, int(obj.port)),
                             )
 
                     elif obj.protocol == self.TCP_PROTOCOL:
@@ -311,15 +315,19 @@ class ServerNode(Node):
                             obj.soc.bind((self.server_ip, int(obj.port)))
                             obj.soc.listen(3)
                         except Exception as e:
-                            print(
-                                "Error binding ",
-                                obj.name,
-                                " to the requested address -",
-                                e,
+                            self.error_msg(
+                                "Error binding "
+                                + obj.name
+                                + " to the requested address -"
+                                + e
                             )
                     elif obj.protocol == self.BLUETOOTH:
                         try:
-                            obj.soc = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+                            obj.soc = socket.socket(
+                                socket.AF_BLUETOOTH,
+                                socket.SOCK_STREAM,
+                                socket.BTPROTO_RFCOMM,
+                            )
                             obj.soc.settimeout(15)
                             obj.soc.setsockopt(
                                 socket.SOL_SOCKET, socket.SO_REUSEADDR, self.BUFFER_SIZE
@@ -327,11 +335,11 @@ class ServerNode(Node):
                             obj.soc.bind((self.server_ip, int(obj.port)))
                             obj.soc.listen(3)
                         except Exception as e:
-                            print(
-                                "Error binding ",
-                                obj.name,
-                                " to the requested address -",
-                                e,
+                            self.error_msg(
+                                "Error binding "
+                                + obj.name
+                                + " to the requested address -"
+                                + e
                             )
 
                     # Creates thread for connecting the sockets and handling incoming data based on protocol.
@@ -341,7 +349,7 @@ class ServerNode(Node):
                     self.threads.append(thread)
                     thread.start()
                     self.thread_counter += 1
-                print("Receiving connections established!")
+                self.info_msg("Receiving connections established!")
 
                 for obj in self.transmit_objects:
                     if obj.protocol == self.UDP_PROTOCOL:
@@ -353,15 +361,18 @@ class ServerNode(Node):
                                 socket.SOL_SOCKET, socket.SO_RCVBUF, 1048576
                             )
                             obj.soc.bind((self.server_ip, int(obj.port)))
-                            print(obj.name + " establishing connection...")
+                            self.info_msg(obj.name + " establishing connection...")
                             temp, obj.address = obj.soc.recvfrom(self.BUFFER_SIZE)
                             if temp == b"initialize_channel":
                                 obj.soc.sendto(b"confirm_connection", obj.address)
-                                print(obj.name + " connected!")
+                                self.info_msg(obj.name + " connected!")
                             time.sleep(0.5)
                         except Exception as e:
-                            print(
-                                "Error binding ", obj.name, " to requested address: ", e
+                            self.error_msg(
+                                "Error binding "
+                                + obj.name
+                                + " to requested address: "
+                                + e
                             )
 
                     elif obj.protocol == self.TCP_PROTOCOL:
@@ -377,13 +388,20 @@ class ServerNode(Node):
                             obj.connection, obj.address = obj.soc.accept()
                             time.sleep(0.5)
                         except Exception as e:
-                            print(
-                                "Error binding ", obj.name, " to requested address: ", e
+                            self.error_msg(
+                                "Error binding "
+                                + obj.name
+                                + " to requested address: "
+                                + e
                             )
                     elif obj.protocol == self.BLUETOOTH:
                         # Creates a Bluetooth socket
                         try:
-                            obj.soc = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+                            obj.soc = socket.socket(
+                                socket.AF_BLUETOOTH,
+                                socket.SOCK_STREAM,
+                                socket.BTPROTO_RFCOMM,
+                            )
                             obj.soc.settimeout(15)
                             obj.soc.setsockopt(
                                 socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
@@ -393,40 +411,43 @@ class ServerNode(Node):
                             obj.connection, obj.address = obj.soc.accept()
                             time.sleep(0.5)
                         except Exception as e:
-                            print(
-                                "Error binding ", obj.name, " to requested address: ", e
+                            self.error_msg(
+                                "Error binding "
+                                + obj.name
+                                + " to requested address: "
+                                + e
                             )
                     obj.subscriber = self.create_subscription(
                         self.str_to_class(obj.msg_type), obj.name, obj.callback, obj.qos
                     )
-                    print(obj.name + " subscription started!")
+                    self.info_msg(obj.name + " subscription started!")
 
                 self.INIT_COMPLETE = True
             else:
-                print("Error: robot_name does not match with client.")
+                self.error_msg("Error: robot_name does not match with client.")
         else:
             # Shutdown closes sockets and ends threads
             # If a shutdown is received from the client
             if data[0] == "shutdown":
-                print(
+                self.warn_msg(
                     'Shutdown received from client\nPlease wait for connections to close..."'
                 )
                 self.close_threads = True
                 for thread in self.threads:
                     thread.join()
 
-            print(str(data))
+            self.info_msg(str(data))
 
     def shutdown(self, data):
         if data.data == "shutdown":
-            print(
+            self.warn_msg(
                 "Shutdown received from topic\nPlease wait for connections to close..."
             )
             self.close_threads = True
             for thread in self.threads:
                 thread.join()
             self.server.send(b"shutdown")
-            print("Sent shutdown to client.")
+            self.info_msg("Sent shutdown to client.")
         else:
             pass
 
@@ -443,9 +464,9 @@ class ServerNode(Node):
                 except socket.timeout:
                     continue
                 except Exception as e:
-                    print(obj.name, "- Error while connecting: ", e)
+                    self.error_msg(obj.name + " - Error while connecting: " + e)
 
-            print(str(obj.name) + " connected!")
+            self.info_msg(str(obj.name) + " connected!")
 
             while obj.connected and not self.close_threads:
                 # Decrypt with Fernet and deserialize with pickle
@@ -458,31 +479,36 @@ class ServerNode(Node):
                     obj.publisher.publish(msg)
                     warn = 1
                     if stopped:
-                        print(obj.name, "reinitialized.")
+                        self.info_msg(obj.name + " reinitialized.")
                         stopped = False
                 except socket.timeout:
                     if warn < 5:
-                        print("No data received from", obj.name, "| Warning #", warn)
+                        self.warn_msg(
+                            "No data received from "
+                            + obj.name
+                            + " | Warning #"
+                            + str(warn)
+                        )
                     warn += 1
                     if warn == 5:
-                        print("\n===============================")
-                        print("Stopping warning for", obj.name)
-                        print("===============================\n")
+                        self.warn_msg("===============================")
+                        self.warn_msg("Stopping warning for " + obj.name)
+                        self.warn_msg("===============================")
                         warn = 20
                         stopped = True
                     continue
                 except cryptography.fernet.InvalidToken:
                     # Invalid tolken is the same as not equal encryption key
                     # or broken message.
-                    print(obj.name, "- Received message with invalid tolken!")
+                    self.warn_msg(obj.name + " - Received message with invalid tolken!")
                     i += 1
                     if i >= 3:
-                        print("Received too many invalid tolkens. Shutting down.")
+                        self.error_msg(
+                            "Received too many invalid tolkens. Shutting down."
+                        )
                         rclpy.shutdown()
                 except OSError as e:
-                    print("OSError:", e)
-
-            
+                    self.error_msg("OSError:", e)
 
         elif obj.protocol == self.TCP_PROTOCOL or self.BLUETOOTH:
             while not obj.connected:
@@ -490,23 +516,28 @@ class ServerNode(Node):
                 obj.connected = True
                 buf = b""
 
-            print(str(obj.name) + " connected!")
+            self.info_msg(str(obj.name) + " connected!")
 
             while obj.connected and not self.close_threads:
                 try:
                     data_stream = obj.connection.recv(1024)
                     warn = 1
                     if stopped:
-                        print(obj.name, "reinitialized.")
+                        self.info_msg(obj.name + " reinitialized.")
                         stopped = False
                 except socket.timeout:
                     if warn < 5:
-                        print("No data received from", obj.name, "| Warning #", warn)
+                        self.warn_msg(
+                            "No data received from "
+                            + obj.name
+                            + " | Warning #"
+                            + str(warn)
+                        )
                     warn += 1
                     if warn == 5:
-                        print("\n===============================")
-                        print("Stopping warning for", obj.name)
-                        print("===============================\n")
+                        self.warn_msg("===============================")
+                        self.warn_msg("Stopping warning for " + obj.name)
+                        self.warn_msg("===============================")
                         warn = 20
                         stopped = True
                     continue
@@ -532,16 +563,16 @@ class ServerNode(Node):
                 except cryptography.fernet.InvalidToken:
                     i += 1
                     if (i == 50) & (warn < 3):
-                        print(obj.name + " - Received multiple invalid tolkens.")
-                        print(
+                        self.error_msg(
+                            obj.name + " - Received multiple invalid tolkens."
+                        )
+                        self.info_msg(
                             "Could be caused by TCP message size or invalid encryption key."
                         )
                         i = 0
                         warn += 1
                     if warn == 3:
-                        print("Stopping InvalidTolken warning for " + obj.name)
-
-
+                        self.warn_msg("Stopping InvalidTolken warning for " + obj.name)
 
             self.thread_counter -= 1
             # Resets incoming and outgoing connections on shutdown.
@@ -550,16 +581,25 @@ class ServerNode(Node):
                 self.close_threads = False
                 self.receive_objects = []
                 self.transmit_objects = []
-                print("Closing", obj.name)
+                self.info_msg("Closing " + obj.name)
                 obj.soc.close()
                 self.close_threads = False
-            print("Closing", obj.name)
+            self.info_msg("Closing " + obj.name)
             obj.soc.shutdown()
 
     # Converts sting to class.
     # Only works if said class is defined. Remember to import your own custom message types if used.
     def str_to_class(self, classname):
         return getattr(sys.modules[__name__], classname)
+
+    def info_msg(self, msg: str):
+        self.get_logger().info("\033[94m" + msg + "\033[0m")
+
+    def warn_msg(self, msg: str):
+        self.get_logger().warn("\033[93m" + msg + "\033[0m")
+
+    def error_msg(self, msg: str):
+        self.get_logger().error("\033[91m" + msg + "\033[0m")
 
 
 def main(argv=sys.argv[1:]):
@@ -591,7 +631,7 @@ def main(argv=sys.argv[1:]):
         server_node.destroy_node()
         rclpy.shutdown()
     except Exception as e:
-        print("Error:", e, "|rclpy shutdown failed")
+        self.error_msg("Error:", e, "|rclpy shutdown failed")
 
 
 if __name__ == "__main__":

@@ -285,16 +285,20 @@ class ClientNode(Node):
 
         # Create a TCP or bluetooth socket object and connect to server
         if ":" in self.server_ip:
-            self.clientSocket = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+            self.clientSocket = socket.socket(
+                socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM
+            )
         else:
             self.clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.clientSocket.setsockopt(
                 socket.SOL_SOCKET, socket.SO_REUSEADDR, self.BUFFER_SIZE
             )
         self.clientSocket.settimeout(None)
-        print(
-            self.robot_name,
-            "connecting to server ({}:{})...".format(self.server_ip, self.server_port),
+        self.info_msg(
+            self.robot_name
+            + " connecting to server ({}:{})...".format(
+                self.server_ip, self.server_port
+            ),
         )
 
         while not connected:
@@ -305,7 +309,7 @@ class ClientNode(Node):
                 pass
 
         # Send the init message and wait for response
-        print("Connected! Sending initialization message...")
+        self.info_msg("Connected! Sending initialization message...")
         self.clientSocket.send(init_msg.encode("utf-8"))
         connection_response = self.clientSocket.recv(2048)
 
@@ -317,11 +321,11 @@ class ClientNode(Node):
 
         while connection_response != None:
             if connection_response == "Matching init received.":
-                print("Matching initialization message confirmed.")
+                self.info_msg("Matching initialization message confirmed.")
                 # Sleeping to ensure that the server readies the ports for communication
                 # before attempting to connect.
                 time.sleep(2)
-                print("Establishing connections...")
+                self.info_msg("Establishing connections...")
                 for obj in self.transmit_objects:
                     obj.address = (self.server_ip, int(obj.port))
                     if obj.protocol == self.UDP_PROTOCOL:
@@ -332,10 +336,12 @@ class ClientNode(Node):
                                 socket.SOL_SOCKET, socket.SO_RCVBUF, 1048576
                             )
                             obj.soc.sendto(b"initialize_channel", obj.address)
-                            print(obj.name + " establishing connection...")
+                            self.info_msg(obj.name + " establishing connection...")
                             time.sleep(0.5)
                         except Exception as e:
-                            print("Error creating UDP socket for ", obj.name, ": ", e)
+                            self.error_msg(
+                                "Error creating UDP socket for " + obj.name + ": " + e
+                            )
 
                     elif obj.protocol == self.TCP_PROTOCOL:
                         try:
@@ -346,33 +352,37 @@ class ClientNode(Node):
                             )
                             obj.soc.connect(obj.address)
                         except Exception as e:
-                            print(
-                                "Error connecting ",
-                                obj.name,
-                                " to requested address: ",
-                                e,
+                            self.error_msg(
+                                "Error connecting "
+                                + obj.name
+                                + " to requested address: "
+                                + e
                             )
                     elif obj.protocol == self.BLUETOOTH:
                         try:
-                            obj.soc = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+                            obj.soc = socket.socket(
+                                socket.AF_BLUETOOTH,
+                                socket.SOCK_STREAM,
+                                socket.BTPROTO_RFCOMM,
+                            )
                             obj.soc.settimeout(15)
                             obj.soc.setsockopt(
                                 socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
                             )
                             obj.soc.connect(obj.address)
                         except Exception as e:
-                            print(
-                                "Error connecting ",
-                                obj.name,
-                                " to requested address: ",
-                                e,
+                            self.error_msg(
+                                "Error connecting "
+                                + obj.name
+                                + " to requested address: "
+                                + e
                             )
                     # Creates a subscriber for each object with its appropriate callback function based on protocol.
-                    print(obj.name + " connected!")
+                    self.info_msg(obj.name + " connected!")
                     obj.subscriber = self.create_subscription(
                         self.str_to_class(obj.msg_type), obj.name, obj.callback, obj.qos
                     )
-                print("Transmission channels established!")
+                self.info_msg("Transmission channels established!")
 
                 for obj in self.receive_objects:
                     # Create publisher to correct topic
@@ -395,7 +405,9 @@ class ClientNode(Node):
                                 socket.SOL_SOCKET, socket.SO_RCVBUF, 1048576
                             )
                         except Exception as e:
-                            print("Error creating UDP socket for ", obj.name, ": ", e)
+                            self.error_msg(
+                                "Error creating UDP socket for " + obj.name + ": " + e
+                            )
 
                     elif obj.protocol == self.TCP_PROTOCOL:
                         try:
@@ -408,7 +420,7 @@ class ClientNode(Node):
                             )
                             time.sleep(0.5)
                         except Exception as e:
-                            print(
+                            self.error_msg(
                                 "Error connecting ",
                                 obj.name,
                                 " to the requested address -",
@@ -416,7 +428,11 @@ class ClientNode(Node):
                             )
                     elif obj.protocol == self.BLUETOOTH:
                         try:
-                            obj.soc = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+                            obj.soc = socket.socket(
+                                socket.AF_BLUETOOTH,
+                                socket.SOCK_STREAM,
+                                socket.BTPROTO_RFCOMM,
+                            )
                             obj.soc.settimeout(15)
                             obj.soc.setsockopt(
                                 socket.SOL_SOCKET,
@@ -425,7 +441,7 @@ class ClientNode(Node):
                             )
                             time.sleep(0.5)
                         except Exception as e:
-                            print(
+                            self.error_msg(
                                 "Error connecting ",
                                 obj.name,
                                 " to the requested address -",
@@ -439,23 +455,23 @@ class ClientNode(Node):
                     self.threads.append(thread)
                     thread.start()
                     time.sleep(1)
-                print("Receiving connections established!")
+                self.info_msg("Receiving connections established!")
 
             else:
-                print(connection_response)
+                self.info_msg(connection_response)
 
             connection_response = None
 
     def shutdown(self, data):
         if data.data == "shutdown":
-            print(
+            self.warn_msg(
                 "Shutdown received from topic\nPlease wait for connections to close..."
             )
             self.close_threads = True
             for thread in self.threads:
                 thread.join()
             self.clientSocket.send(b"shutdown")
-            print("Sent shutdown to server.")
+            self.info_msg("Sent shutdown to server.")
         else:
             pass
 
@@ -464,8 +480,8 @@ class ClientNode(Node):
             try:
                 data = self.clientSocket.recv(2048)
                 if data == b"shutdown":
-                    print("Received shutdown from server.")
-                    print("Please wait for connections to close...")
+                    self.info_msg("Received shutdown from server.")
+                    self.warn_msg("Please wait for connections to close...")
                     self.close_threads = True
                 else:
                     continue
@@ -480,7 +496,7 @@ class ClientNode(Node):
             while not obj.connected:
                 try:
                     # time.sleep(1)
-                    print(obj.name, " sending init")
+                    self.info_msg(obj.name, " sending init")
                     obj.soc.sendto(
                         b"initialize_channel", (self.server_ip, int(obj.port))
                     )
@@ -490,25 +506,30 @@ class ClientNode(Node):
                 except socket.timeout:
                     continue
                 except Exception as e:
-                    print(self.name, "- Error while connecting: ", e)
+                    self.error_msg(self.name, "- Error while connecting: ", e)
 
-            print(str(obj.name) + " connected!")
+            self.info_msg(str(obj.name) + " connected!")
 
             while obj.connected:
                 try:
                     data_encrypted, addr = obj.soc.recvfrom(self.BUFFER_SIZE)
                     warn = 1
                     if stopped:
-                        print(obj.name, "reinitialized.")
+                        self.info_msg(obj.name, "reinitialized.")
                         stopped = False
                 except socket.timeout:
                     if warn < 5:
-                        print("No data received from", obj.name, "| Warning #", warn)
+                        self.warn_msg(
+                            "No data received from "
+                            + obj.name
+                            + " | Warning #"
+                            + str(warn)
+                        )
                     warn += 1
                     if warn == 5:
-                        print("\n===============================")
-                        print("Stopping warning for", obj.name)
-                        print("===============================\n")
+                        self.warn_msg("===============================")
+                        self.warn_msg("Stopping warning for " + obj.name)
+                        self.warn_msg("===============================")
                         warn = 20
                         stopped = True
                     continue
@@ -522,10 +543,12 @@ class ClientNode(Node):
                     warn = 0
                 except cryptography.fernet.InvalidToken:
                     continue
-                    print("Received message with invalid tolken!")
+                    self.warn_msg("Received message with invalid tolken!")
                     i += 1
                     if i >= 3:
-                        print("Received too many invalid tolkens. Shutting down.")
+                        self.error_msg(
+                            "Received too many invalid tolkens. Shutting down."
+                        )
                         rclpy.shutdown()
 
         elif obj.protocol == self.TCP_PROTOCOL:
@@ -535,24 +558,29 @@ class ClientNode(Node):
                 obj.connected = True
                 buf = b""
 
-            print(str(obj.name) + " connected!")
+            self.info_msg(str(obj.name) + " connected!")
 
             while obj.connected and not self.close_threads:
                 try:
                     data_stream = obj.soc.recv(1024)
                     warn = 1
                     if stopped:
-                        print(obj.name, "reinitialized.")
+                        self.info_msg(obj.name, "reinitialized.")
                         stopped = False
                         warn = 1
                 except socket.timeout:
                     if warn < 5:
-                        print("No data received from", obj.name, "| Warning #", warn)
+                        self.warn_msg(
+                            "No data received from "
+                            + obj.name
+                            + " | Warning #"
+                            + str(warn)
+                        )
                     warn += 1
                     if warn == 5:
-                        print("\n===============================")
-                        print("Stopping warning for", obj.name)
-                        print("===============================\n")
+                        self.warn_msg("===============================")
+                        self.warn_msg("Stopping warning for " + obj.name)
+                        self.warn_msg("===============================")
                         warn = 20
                         stopped = True
                     continue
@@ -579,10 +607,12 @@ class ClientNode(Node):
                 except socket.timeout:
                     continue
                 except cryptography.fernet.InvalidToken:
-                    print("Received message with invalid tolken!")
+                    self.warn_msg("Received message with invalid tolken!")
                     i += 1
                     if i >= 3:
-                        print("Received too many invalid tolkens. Shutting down.")
+                        self.error_msg(
+                            "Received too many invalid tolkens. Shutting down."
+                        )
                         rclpy.shutdown()
         elif obj.protocol == self.BLUETOOTH:
             while not obj.connected:
@@ -591,24 +621,29 @@ class ClientNode(Node):
                 obj.connected = True
                 buf = b""
 
-            print(str(obj.name) + " connected!")
+            self.info_msg(str(obj.name) + " connected!")
 
             while obj.connected and not self.close_threads:
                 try:
                     data_stream = obj.soc.recv(1024)
                     warn = 1
                     if stopped:
-                        print(obj.name, "reinitialized.")
+                        self.info_msg(obj.name, "reinitialized.")
                         stopped = False
                         warn = 1
                 except socket.timeout:
                     if warn < 5:
-                        print("No data received from", obj.name, "| Warning #", warn)
+                        self.warn_msg(
+                            "No data received from "
+                            + obj.name
+                            + " | Warning #"
+                            + str(warn)
+                        )
                     warn += 1
                     if warn == 5:
-                        print("\n===============================")
-                        print("Stopping warning for", obj.name)
-                        print("===============================\n")
+                        self.warn_msg("===============================")
+                        self.warn_msg("Stopping warning for " + obj.name)
+                        self.warn_msg("===============================")
                         warn = 20
                         stopped = True
                     continue
@@ -635,18 +670,29 @@ class ClientNode(Node):
                 except socket.timeout:
                     continue
                 except cryptography.fernet.InvalidToken:
-                    print("Received message with invalid tolken!")
+                    self.warn_msg("Received message with invalid tolken!")
                     i += 1
                     if i >= 3:
-                        print("Received too many invalid tolkens. Shutting down.")
+                        self.error_msg(
+                            "Received too many invalid tolkens. Shutting down."
+                        )
                         rclpy.shutdown()
 
-        print("Closing", obj.name)
+        self.info_msg("Closing " + obj.name)
         obj.soc.shutdown()
         self.close_threads = False
 
     def str_to_class(self, classname):
         return getattr(sys.modules[__name__], classname)
+
+    def info_msg(self, msg: str):
+        self.get_logger().info("\033[94m" + msg + "\033[0m")
+
+    def warn_msg(self, msg: str):
+        self.get_logger().warn("\033[93m" + msg + "\033[0m")
+
+    def error_msg(self, msg: str):
+        self.get_logger().error("\033[91m" + msg + "\033[0m")
 
 
 def main(argv=sys.argv[1:]):
@@ -673,7 +719,7 @@ def main(argv=sys.argv[1:]):
         client_node.destroy_node()
         rclpy.shutdown()
     except Exception as e:
-        print("Error:", e, "|rclpy shutdown failed")
+        self.error_msg("Error:", e, "|rclpy shutdown failed")
 
 
 if __name__ == "__main__":

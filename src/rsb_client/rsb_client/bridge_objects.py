@@ -71,13 +71,15 @@ class BridgeObject:
 
         if self.protocol == self.TCP_PROTOCOL:
             msg += b"_split_"
-            self.soc.send(msg)
+            if self.type == self.SERVER:
+                self.connection.send(msg)
+            else:
+                self.soc.send(msg)
         elif self.protocol == self.BLUETOOTH:
             msg += b"_split_"
             if self.type == self.SERVER:
                 self.connection.send(msg)
             else:
                 self.soc.send(msg)
-
         else:
             self.soc.sendto(msg, self.address)
