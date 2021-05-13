@@ -3,7 +3,7 @@
 <package format="3">
   <name>rsb_server</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>The server part of the ros2_socket_bridge package.</description>
   <maintainer email="mortenmdahl@outlook.com">kmriiwa</maintainer>
   <license>Apache License 2.0</license>
 

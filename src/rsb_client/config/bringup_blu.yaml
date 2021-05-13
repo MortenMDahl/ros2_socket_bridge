@@ -20,15 +20,9 @@ client_node:
     # ---------------------------------------------------------------------------
     # *_topics:
     # Topics to be received by client or sent to server.
-    # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
     # *_msg_types
-    # Message types from either std_msgs, nav_msgs, sensor_msgs or geometry_msgs
-    # which corresponds to the topic being received or transmitted
-
-    # Note: You can add more by importing them in server_node, client_node
-    # and serializer, and creating a serialize and deserialize function in
-    # serializer.py. You then have to add them to the main function serialize()
-    # an deserialize().
+    # Message types which corresponds to the topic being received or transmitted.
     # ---------------------------------------------------------------------------
     # *_ports
     # Ports to be used on the server. These ports must be available.

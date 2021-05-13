@@ -50,9 +50,9 @@ def main():
         except OSError:
             busy_ports.append(port)
     print("-----------------------------------------")
-    print("Your bluetooth adapters MAC address is:\n", MAC)
+    print("Your Bluetooth adapters MAC address is:\n", MAC)
     print("-----------------------------------------")
-    print("Busy bluetooth ports [{}-{}]:\n".format(min_port, max_port), busy_ports)
+    print("Busy Bluetooth ports [{}-{}]:\n".format(min_port, max_port), busy_ports)
     print("-----------------------------------------")
 
 

@@ -21,7 +21,7 @@ setup(
     zip_safe=True,
     maintainer='kmriiwa',
     maintainer_email='mortenmdahl@outlook.com',
-    description='TODO: Package description',
+    description='Multi-robot testing for the ros2_socket_bridge package.',
     license='Apache License 2.0',
     tests_require=['pytest'],
     entry_points={
