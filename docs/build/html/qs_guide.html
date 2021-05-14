@@ -1,0 +1,137 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Quick-start guide &#8212; ros2_socket_bridge  documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="License" href="license.html" />
+    <link rel="prev" title="Welcome to the documentation of ros2_domain_bridge!" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="quick-start-guide">
+<h1>Quick-start guide<a class="headerlink" href="#quick-start-guide" title="Permalink to this headline">¶</a></h1>
+<p>This guide will let you quickly start using ros2_domain_bridge. To start off, we need to select our configuration based on the intention of using this package.</p>
+<p>If you are intending on using this as a domain bridge, the most proficient way would be to transfer topics locally on your computer. That would base both the client and server running on the same computer, but on different ROS_DOMAIN_ID’s. In this case, the server_ip setting would be set to ‘127.0.0.1’.</p>
+<p>If you are intending on transferring between computers, set the IP of the server computer as something memorable and static. This will later be the setting for server_ip. If you are using a VPN tunnel or other means of transferring data across the internet, make sure the server computer’s IP is static.</p>
+<p>If you are planning on transferring messages using Bluetooth, you first need to connect the server and client devices. Once this is done, find the MAC address of the Bluetooth attached to your server device. This is done in Linux by running ‘hciconfig’ in the terminal. Alternatively, just run the ‘check_bluetooth_MAC_and_ports.py’ script located inside the project folder. This will give you the MAC address and busy ports on the device. The MAC address will later be used as the server_ip variable.</p>
+<div class="section" id="server-setup">
+<h2>Server setup<a class="headerlink" href="#server-setup" title="Permalink to this headline">¶</a></h2>
+<p>To configure the server, simply head into ‘src/rsb_server’.</p>
+<p>First off, we will configure the ‘bringup.yaml’ file, located inside the config folder. Simply set the server_ip to be either an IP address or MAC address, based on your intention.</p>
+<p>Navigate back into ‘rsb_server’ and enter ‘launch’. Locate the ‘server.launch.py’ file. First, we need to set the name of the process. This name has to match with the client, and can be used as a prefix to the topics received. Secondly, set the server_port variable. This variable has to be an open port, best suited to any number between 49152 and 65535. If you are using Bluetooth, the ports to be used should not be listed when running the ‘check_bluetooth_MAC_and_ports.py’ script. Next, we select whether or not to use the name as a prefix for incoming topics. As an example, if we set the name to be ‘robot1’, and we are to receive a topic ‘/goal_pose’, the name of the incoming topic would be ‘/robot1/goal_pose’. We also have to select if we want to use encryption or not. The encryption key could be any 32 url-safe base64-encoded bytes object, which can easily be generated using the ‘generate_key.py’ script in the main folder. This has to match with the client.</p>
+<p>That’s it for server setup. The topics to be transferred and their settings are all defined client-side.</p>
+</div>
+<div class="section" id="client-setup">
+<h2>Client setup<a class="headerlink" href="#client-setup" title="Permalink to this headline">¶</a></h2>
+<p>Head to ‘src/rsb_client’</p>
+<p>First, we will configure the ‘bringup.yaml’ file inside the ‘config’ folder. As with the server, we need to set the server_ip and server_port variables. We then need to select which topics to transmit and receive. Every setting exept for *_ports should be inside a string. The receive_* settings are for topics which are received on the client, and transmit_* are for topics which are sent from the client to the server. Each topic has its belonging message type, added to the *_msg_types variable. The port to be used is in the *_ports list, the protocol for transmission is in the *_protocols list, and finally the QoS to be used by the publisher is in the *_qos list. The first inquiry in each list is related. As an example, here is a configuration which sends ‘/scan’, ‘/odom’ and ‘/shutdown’ topics, and receives ‘/initialpose’, ‘/goal_pose’ and ‘/shutdown’.</p>
+<div class="highlight-rts notranslate"><div class="highlight"><pre><span></span><span class="nf">receive_topics</span><span class="o">:</span> <span class="o">[</span><span class="s">&#39;scan&#39;</span><span class="o">,</span> <span class="s">&#39;odom&#39;</span><span class="o">,</span> <span class="s">&#39;shutdown&#39;</span><span class="o">]</span>
+<span class="nf">receive_msg_types</span><span class="o">:</span> <span class="o">[</span><span class="s">&#39;LaserScan&#39;</span><span class="o">,</span> <span class="s">&#39;Odometry&#39;</span><span class="o">,</span> <span class="s">&#39;String&#39;</span><span class="o">]</span>
+<span class="nf">receive_ports</span><span class="o">:</span> <span class="o">[</span><span class="m">12004</span><span class="o">,</span> <span class="m">12005</span><span class="o">,</span> <span class="m">12006</span><span class="o">]</span>
+<span class="nf">receive_protocols</span><span class="o">:</span> <span class="o">[</span><span class="s">&#39;UDP&#39;</span><span class="o">,</span> <span class="s">&#39;UDP&#39;</span><span class="o">,</span> <span class="s">&#39;TCP&#39;</span><span class="o">]</span>
+<span class="nf">receive_qos</span><span class="o">:</span> <span class="o">[</span><span class="s">&#39;qos_profile_sensor_data&#39;</span><span class="o">,</span> <span class="s">&#39;qos_profile_sensor_data&#39;</span><span class="o">,</span> <span class="s">&#39;10&#39;</span><span class="o">]</span>
+
+<span class="nf">transmit_topics</span><span class="o">:</span> <span class="o">[</span><span class="s">&#39;initialpose&#39;</span><span class="o">,</span> <span class="s">&#39;goal_pose&#39;</span><span class="o">,</span> <span class="s">&#39;shutdown&#39;</span><span class="o">]</span>
+<span class="nf">transmit_msg_types</span><span class="o">:</span> <span class="o">[</span><span class="s">&#39;PoseWithCovarianceStamped&#39;</span><span class="o">,</span> <span class="s">&#39;PoseStamped&#39;</span><span class="o">,</span> <span class="s">&#39;String&#39;</span><span class="o">]</span>
+<span class="nf">transmit_ports</span><span class="o">:</span> <span class="o">[</span><span class="m">12002</span><span class="o">,</span> <span class="m">12012</span><span class="o">]</span>
+<span class="nf">transmit_protocols</span><span class="o">:</span> <span class="o">[</span><span class="s">&#39;UDP&#39;</span><span class="o">,</span> <span class="s">&#39;UDP&#39;</span><span class="o">,</span> <span class="s">&#39;TCP&#39;</span><span class="o">]</span>
+<span class="nf">transmit_qos</span><span class="o">:</span> <span class="o">[</span><span class="s">&#39;qos_profile_system_default&#39;</span><span class="o">,</span> <span class="s">&#39;qos_profile_system_default&#39;</span><span class="o">,</span> <span class="s">&#39;10&#39;</span><span class="o">]</span>
+</pre></div>
+</div>
+<p>If you are going to use Bluetooth to communicate the topics, you need to set all *_protocols to ‘BLUETOOTH’.</p>
+<p>Once the configuration file is finalized, we need to set up the launch file.
+Head to ‘src/rsb_client/launch/client.launch.py’. We first need to set the name which must match with the name used in the server node. Additionally, we need to set whether or not to use name as a prefix, to use encryption, and the encryption key which must match with the server.</p>
+<p>Once this is done, both server and client should be ready to go.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">ros2_socket_bridge</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Quick-start guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#server-setup">Server setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#client-setup">Client setup</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Welcome to the documentation of ros2_domain_bridge!</a></li>
+      <li>Next: <a href="license.html" title="next chapter">License</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, Morten M. Dahl.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.8</a>
+      
+      |
+      <a href="_sources/qs_guide.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
