@@ -15,6 +15,3 @@ Contents:
    internal_workings
    testing
    license
-
-
-

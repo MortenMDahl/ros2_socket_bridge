@@ -54,4 +54,4 @@ As with TCP, SOCK_STREAM is used. This is due to the low reliability of Bluetoot
     obj.soc.settimeout(15)
     obj.soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-Bluetooth sockets also use a buffer, just as TCP sockets do.
+Bluetooth sockets also use a buffer, just like TCP sockets do.
