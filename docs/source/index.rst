@@ -1,4 +1,4 @@
-Welcome to the documentation of ros2_domain_bridge!
+Welcome to the documentation of ros2_socket_bridge!
 ===================================================
 
 This is a package developed for ROS2 'Foxy' which allows the utilization of Python sockets in ROS2, with the main goal being transmission of topics between domains. It can be used for multiple purposes, and could add an additional communication layer on top of ROS-implemented DDS. 
