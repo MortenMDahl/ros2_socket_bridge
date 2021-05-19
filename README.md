@@ -2,6 +2,11 @@
 
 **README and the project is still under development. Do you have questions or feature requests? Contact me at mortemd@stud.ntnu.no.**
 
+<p align="center">
+  <img src="./docs/source/images/ros2_DCS.png" width="350" title="DCS example">
+</p>
+
+
 The ros2_socket_bridge package is made to enable node communication across different domains or computers using the built-in python socket package. This enables the transmission of messages using TCP/IP or bluetooth.
 
 By utilizing subscribers and publishers combined with sockets, the package allows the transfer of ROS-style messages between a server and client. The messages can be sent between computers or devices by the use of TCP/IP or bluetooth, which opens up many possibilities such as cross-domain communication or communication with devices that only has bluetooth receivers.
