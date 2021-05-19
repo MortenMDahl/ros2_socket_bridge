@@ -2,8 +2,8 @@
 
 **README and the project is still under development. Do you have questions or feature requests? Contact me at mortemd@stud.ntnu.no.**
 
-<p align="right">
-  <img src="./docs/source/images/ros2_DCS.png" width="350" title="DCS example">
+<p align="center">
+  <img src="./docs/source/images/ros2_DCS.png" width="450" title="DCS example">
 </p>
 
 
