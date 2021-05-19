@@ -8,7 +8,7 @@ By utilizing subscribers and publishers combined with sockets, the package allow
 
 An example use-case could be where the user wants to restrict the amount of topics per domain, such as for example robot fleets, where multiple robots have their own navigation software. A behaviortree could be running on a separate domain where it could send commands to each robot without confusing topic namespaces.
 
-For additional documentation, see [ReadTheDocs]{https://ros2-socket-bridge.readthedocs.io}.
+For additional documentation, see [ReadTheDocs](https://ros2-socket-bridge.readthedocs.io).
 
 The package is made as part of a masters thesis in "Mechanical Engineering - Robotics and Automation" at NTNU, spring 2021.
 
