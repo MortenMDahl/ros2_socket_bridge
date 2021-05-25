@@ -548,11 +548,12 @@ class ServerNode(Node):
                 else:
                     buf_decoded = buf.decode()
                     split = buf_decoded.split("_split_")
-                    data_encrypted = split[0].encode("utf-8")
+                    data = split[0].encode("utf-8")
                     buf = split[1].encode("utf-8")
 
                 try:
-                    data = self.fernet.decrypt(data_encrypted)
+                    if self.encrypt:
+                        data = self.fernet.decrypt(data)
                     msg = pickle.loads(data)
                     if msg != None:
                         obj.publisher.publish(msg)
