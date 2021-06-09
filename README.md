@@ -1,9 +1,7 @@
 # ros2_socket_bridge
 
-**README and the project is still under development. Do you have questions or feature requests? Contact me at mortemd@stud.ntnu.no.**
-
 <p align="center">
-  <img src="./docs/source/images/ros2_DCS_background.png" width="450" title="DCS example">
+  <img src="./docs/source/images/ros2_DCS.png" width="450" title="DCS example">
 </p>
 
 
@@ -64,7 +62,37 @@ Configure the launch file by navigating to 'src/rdb_client/launch/client.launch.
 After configuring both server and client, remember to build and source the setup file.
 
 ## Example
-TODO.
+In this example, we will start two TurtleBot3 robots through the Navigation2 stack and transmit their topics across domains.
+
+First, make four terminals. In groups of two, the terminals are assigned to their domain by seting the ROS_DOMAIN_ID by running the commands 
+```
+$ export ROS_DOMAIN_ID=x
+```
+Where 'x' is a different number in both domains, ex. 1 and 2.
+
+In the first set terminal, which will be referenced to as our client terminals, we will simulate the robots. As you have the 'rsb_nav2' package installed and sourced, you should be able to run the command
+```
+$ ros2 launch rsb_nav2 2_tb3_multibot.launch.py
+```
+This will launch a simulator in Gazebo, with two RViz windows running the Navigation2 stack to navigate both robots.
+
+
+In the second pair of terminals, which will now be known as our server terminals, simply run
+```
+$ ros2 launch rsb_server server.launch.py
+```
+This will launch the server. It will wait for a connection from a client.
+
+Now that the server is running, in the remaining client terminal, run
+```
+$ ros2 launch rsb_client 2_multibot_client.launch.py
+```
+The server and client should now be enabling their connection, and various topics are transferred between server and client. On the remaining server terminal, run 
+```
+$ ros2 topic list
+```
+to view all the available topics which have been transferred.
+Take a closer look at the config files of the client to see how this has been enabled.
 
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.

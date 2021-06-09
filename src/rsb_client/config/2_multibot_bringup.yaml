@@ -1,0 +1,75 @@
+client_node:
+  ros__parameters:
+
+    # ---------------------------------------------------------------------------
+    # server_ip:
+    # IP of the computer where the server node is running.
+    #
+    # Setting the server IP to be the MAC address of the bluetooth device 
+    # running the server will automatically start the server in bluetooth-mode.
+    # ---------------------------------------------------------------------------
+    # server_port:
+    # Port on the server computer which is to be used for the main communication
+    # between the server and client.
+    # ---------------------------------------------------------------------------
+
+    server_ip: '127.0.0.1'
+    server_port: 12000
+
+
+    # ---------------------------------------------------------------------------
+    # *_topics:
+    # Topics to be received by client or sent to server.
+    # ---------------------------------------------------------------------------
+    # *_msg_types
+    # Message types which corresponds to the topic being received or transmitted.
+    # ---------------------------------------------------------------------------
+    # *_ports
+    # Ports to be used on the server. These ports must be available.
+    # It is recommended to use the dynamic ports (49152-65535), as to not 
+    # interfer with other programs that are registered by IANA.
+    # ---------------------------------------------------------------------------
+    # *_protocols
+    # Protocol to be used for sending or receiving data.
+    # Can be either 'TCP', 'UDP' or 'BLUETOOTH'.
+    # Has to be 'BLUETOOTH' if the application is running in bluetooth mode.
+    # ---------------------------------------------------------------------------
+    # *_qos
+    # Quality of Service setting used in publisher or subscriber.
+    # Can be any integer as a string, or QoS documented in rclpy.qos
+    # ---------------------------------------------------------------------------
+
+
+    # ---------------------------------------------------------------------------
+    # receive_*
+    # Topics to be received on the client from the server.
+    # ---------------------------------------------------------------------------
+    # transmit_*
+    # Topics to be transmitted to the server from the client.
+    # ---------------------------------------------------------------------------
+
+
+    #receive_topics: ['scan', 'odom', 'map']
+    #receive_msg_types: ['LaserScan', 'Odometry', 'OccupancyGrid']
+    #receive_ports: [12004, 12005, 12006]
+    #receive_protocols: ['UDP', 'UDP', 'UDP']
+    #receive_qos: ['qos_profile_sensor_data', 'qos_profile_sensor_data', 'qos_profile_sensor_data']
+
+    #transmit_topics: ['initialpose', 'goal_pose']
+    #transmit_msg_types: ['PoseWithCovarianceStamped', 'PoseStamped']
+    #transmit_ports: [12002, 12012]
+    #transmit_protocols: ['UDP', 'UDP']
+    #transmit_qos: ['qos_profile_system_default', 'qos_profile_system_default']
+
+
+    receive_topics: ['robot1/goal_pose', 'robot2/goal_pose']
+    receive_msg_types: ['PoseStamped', 'PoseStamped']
+    receive_ports: [12001, 12002]
+    receive_protocols: ['TCP', 'TCP']
+    receive_qos: ['qos_profile_sensor_data', 'qos_profile_sensor_data']
+
+    transmit_topics: ['robot1/odom', 'robot2/odom', 'robot1/scan', 'robot2/scan', 'robot1/tf', 'robot2/tf']
+    transmit_msg_types: ['Odometry', 'Odometry', 'LaserScan', 'LaserScan', 'TFMessage', 'TFMessage']
+    transmit_ports: [12003, 12004, 12005, 12006, 12007, 12008]
+    transmit_protocols: ['UDP', 'UDP', 'UDP', 'UDP', 'UDP', 'UDP']
+    transmit_qos: ['qos_profile_sensor_data', 'qos_profile_sensor_data', 'qos_profile_sensor_data', 'qos_profile_sensor_data', 'qos_profile_sensor_data', 'qos_profile_sensor_data']
