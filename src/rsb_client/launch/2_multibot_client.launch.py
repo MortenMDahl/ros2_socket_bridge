@@ -49,7 +49,7 @@ def generate_launch_description(argv=sys.argv[1:]):
         default=os.path.join(
             get_package_share_directory('rsb_client'),
             'config',
-            'bringup.yaml'))
+            '2_multibot_bringup.yaml'))
 
     return LaunchDescription([
         DeclareLaunchArgument(
